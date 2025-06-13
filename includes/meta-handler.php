@@ -1,318 +1,275 @@
 <?php
 
 /**
- * Admin Settings Class
- * Handles WordPress admin interface for plugin configuration
+ * Meta Handler Class
+ * Handles injection of OpenGraph meta tags into page headers
  */
 
 if (!defined('ABSPATH')) {
   exit;
 }
 
-class OG_SVG_Admin_Settings
-{
+if (!class_exists('OG_SVG_Meta_Handler')) {
 
-  private $settings;
-
-  public function __construct()
+  class OG_SVG_Meta_Handler
   {
-    add_action('admin_menu', array($this, 'addAdminMenu'));
-    add_action('admin_init', array($this, 'initSettings'));
-    add_action('admin_enqueue_scripts', array($this, 'enqueueAdminScripts'));
 
-    $this->settings = get_option('og_svg_settings', array());
-  }
+    private $settings;
+    private $generator;
 
-  public function addAdminMenu()
-  {
-    add_options_page(
-      'OpenGraph SVG Settings',
-      'OpenGraph SVG',
-      'manage_options',
-      'og-svg-settings',
-      array($this, 'settingsPage')
-    );
-  }
+    public function __construct()
+    {
+      $this->settings = get_option('og_svg_settings', array());
+      $this->generator = new OG_SVG_Generator();
 
-  public function enqueueAdminScripts($hook)
-  {
-    if ($hook !== 'settings_page_og-svg-settings') {
-      return;
+      add_action('wp_head', array($this, 'addOpenGraphTags'), 5);
+      add_filter('language_attributes', array($this, 'addOpenGraphNamespace'));
     }
 
-    wp_enqueue_media(); // For avatar upload
-    wp_enqueue_script(
-      'og-svg-admin',
-      OG_SVG_PLUGIN_URL . 'assets/js/admin.js',
-      array('jquery'),
-      OG_SVG_VERSION,
-      true
-    );
-  }
-
-  public function initSettings()
-  {
-    register_setting(
-      'og_svg_settings_group',
-      'og_svg_settings',
-      array($this, 'sanitizeSettings')
-    );
-
-    // General Settings Section
-    add_settings_section(
-      'og_svg_general_section',
-      'General Settings',
-      array($this, 'generalSectionCallback'),
-      'og-svg-settings'
-    );
-
-    // Avatar URL field
-    add_settings_field(
-      'avatar_url',
-      'Avatar Image URL',
-      array($this, 'avatarUrlFieldCallback'),
-      'og-svg-settings',
-      'og_svg_general_section'
-    );
-
-    // Color scheme field
-    add_settings_field(
-      'color_scheme',
-      'Color Scheme',
-      array($this, 'colorSchemeFieldCallback'),
-      'og-svg-settings',
-      'og_svg_general_section'
-    );
-
-    // Show tagline field
-    add_settings_field(
-      'show_tagline',
-      'Show Site Tagline',
-      array($this, 'showTaglineFieldCallback'),
-      'og-svg-settings',
-      'og_svg_general_section'
-    );
-
-    // Fallback title field
-    add_settings_field(
-      'fallback_title',
-      'Fallback Title',
-      array($this, 'fallbackTitleFieldCallback'),
-      'og-svg-settings',
-      'og_svg_general_section'
-    );
-
-    // Enabled post types field
-    add_settings_field(
-      'enabled_post_types',
-      'Enabled Post Types',
-      array($this, 'enabledPostTypesFieldCallback'),
-      'og-svg-settings',
-      'og_svg_general_section'
-    );
-  }
-
-  public function generalSectionCallback()
-  {
-    echo '<p>Configure your OpenGraph SVG image generation settings below.</p>';
-  }
-
-  public function avatarUrlFieldCallback()
-  {
-    $value = isset($this->settings['avatar_url']) ? $this->settings['avatar_url'] : '';
-    echo '<input type="url" id="avatar_url" name="og_svg_settings[avatar_url]" value="' . esc_attr($value) . '" class="regular-text" />';
-    echo '<button type="button" class="button" id="upload_avatar_button">Upload Image</button>';
-    echo '<p class="description">URL to your avatar image. Recommended size: 200x200px</p>';
-
-    if ($value) {
-      echo '<div style="margin-top: 10px;">';
-      echo '<img src="' . esc_url($value) . '" style="max-width: 100px; max-height: 100px; border-radius: 50%;" />';
-      echo '</div>';
-    }
-  }
-
-  public function colorSchemeFieldCallback()
-  {
-    $value = isset($this->settings['color_scheme']) ? $this->settings['color_scheme'] : 'blue';
-    $schemes = array(
-      'blue' => 'Professional Blue',
-      'purple' => 'Creative Purple',
-      'dark' => 'Modern Dark',
-      'green' => 'Fresh Green'
-    );
-
-    echo '<select id="color_scheme" name="og_svg_settings[color_scheme]">';
-    foreach ($schemes as $key => $label) {
-      $selected = selected($value, $key, false);
-      echo '<option value="' . esc_attr($key) . '" ' . $selected . '>' . esc_html($label) . '</option>';
-    }
-    echo '</select>';
-    echo '<p class="description">Choose the color scheme for your OpenGraph images</p>';
-  }
-
-  public function showTaglineFieldCallback()
-  {
-    $value = isset($this->settings['show_tagline']) ? $this->settings['show_tagline'] : true;
-    echo '<input type="checkbox" id="show_tagline" name="og_svg_settings[show_tagline]" value="1" ' . checked(1, $value, false) . ' />';
-    echo '<label for="show_tagline">Display site tagline in OpenGraph images</label>';
-  }
-
-  public function fallbackTitleFieldCallback()
-  {
-    $value = isset($this->settings['fallback_title']) ? $this->settings['fallback_title'] : 'Welcome';
-    echo '<input type="text" id="fallback_title" name="og_svg_settings[fallback_title]" value="' . esc_attr($value) . '" class="regular-text" />';
-    echo '<p class="description">Title to use when no page title is available (e.g., homepage)</p>';
-  }
-
-  public function enabledPostTypesFieldCallback()
-  {
-    $value = isset($this->settings['enabled_post_types']) ? $this->settings['enabled_post_types'] : array('post', 'page');
-    $post_types = get_post_types(array('public' => true), 'objects');
-
-    echo '<fieldset>';
-    foreach ($post_types as $post_type) {
-      $checked = in_array($post_type->name, $value) ? 'checked="checked"' : '';
-      echo '<label>';
-      echo '<input type="checkbox" name="og_svg_settings[enabled_post_types][]" value="' . esc_attr($post_type->name) . '" ' . $checked . ' />';
-      echo ' ' . esc_html($post_type->label);
-      echo '</label><br>';
-    }
-    echo '</fieldset>';
-    echo '<p class="description">Select which post types should have OpenGraph SVG images generated</p>';
-  }
-
-  public function sanitizeSettings($input)
-  {
-    $sanitized = array();
-
-    // Sanitize avatar URL
-    if (isset($input['avatar_url'])) {
-      $sanitized['avatar_url'] = esc_url_raw($input['avatar_url']);
+    public function addOpenGraphNamespace($output)
+    {
+      return $output . ' prefix="og: http://ogp.me/ns#"';
     }
 
-    // Sanitize color scheme
-    $valid_schemes = array('blue', 'purple', 'dark', 'green');
-    if (isset($input['color_scheme']) && in_array($input['color_scheme'], $valid_schemes)) {
-      $sanitized['color_scheme'] = $input['color_scheme'];
-    } else {
-      $sanitized['color_scheme'] = 'blue';
+    public function addOpenGraphTags()
+    {
+      // Check if we should add OG tags for current post type
+      if (!$this->shouldAddOpenGraphTags()) {
+        return;
+      }
+
+      global $post;
+
+      // Get basic page information
+      $title = $this->getPageTitle();
+      $description = $this->getPageDescription();
+      $url = $this->getCurrentUrl();
+      $site_name = get_bloginfo('name');
+      $image_url = $this->getOpenGraphImageUrl();
+
+      // Output OpenGraph meta tags
+      echo "\n<!-- OpenGraph SVG Generator Meta Tags -->\n";
+
+      // Basic OpenGraph tags
+      echo '<meta property="og:title" content="' . esc_attr($title) . '" />' . "\n";
+      echo '<meta property="og:description" content="' . esc_attr($description) . '" />' . "\n";
+      echo '<meta property="og:url" content="' . esc_url($url) . '" />' . "\n";
+      echo '<meta property="og:site_name" content="' . esc_attr($site_name) . '" />' . "\n";
+      echo '<meta property="og:type" content="' . $this->getOpenGraphType() . '" />' . "\n";
+
+      // Image meta tags
+      if ($image_url) {
+        echo '<meta property="og:image" content="' . esc_url($image_url) . '" />' . "\n";
+        echo '<meta property="og:image:width" content="1200" />' . "\n";
+        echo '<meta property="og:image:height" content="630" />' . "\n";
+        echo '<meta property="og:image:type" content="image/svg+xml" />' . "\n";
+        echo '<meta property="og:image:alt" content="' . esc_attr($title . ' - ' . $site_name) . '" />' . "\n";
+      }
+
+      // Twitter Card tags (for better Twitter integration)
+      echo '<meta name="twitter:card" content="summary_large_image" />' . "\n";
+      echo '<meta name="twitter:title" content="' . esc_attr($title) . '" />' . "\n";
+      echo '<meta name="twitter:description" content="' . esc_attr($description) . '" />' . "\n";
+      if ($image_url) {
+        echo '<meta name="twitter:image" content="' . esc_url($image_url) . '" />' . "\n";
+      }
+
+      // Additional meta tags for better SEO
+      if (!has_action('wp_head', 'rel_canonical')) {
+        echo '<link rel="canonical" href="' . esc_url($url) . '" />' . "\n";
+      }
+
+      echo "<!-- End OpenGraph SVG Generator Meta Tags -->\n";
     }
 
-    // Sanitize show tagline
-    $sanitized['show_tagline'] = isset($input['show_tagline']) ? true : false;
+    private function shouldAddOpenGraphTags()
+    {
+      // Check if current post type is enabled
+      $enabled_post_types = isset($this->settings['enabled_post_types']) ? $this->settings['enabled_post_types'] : array('post', 'page');
 
-    // Sanitize fallback title
-    if (isset($input['fallback_title'])) {
-      $sanitized['fallback_title'] = sanitize_text_field($input['fallback_title']);
+      if (is_home() || is_front_page()) {
+        return in_array('page', $enabled_post_types);
+      }
+
+      if (is_singular()) {
+        $post_type = get_post_type();
+        return in_array($post_type, $enabled_post_types);
+      }
+
+      // Enable for archives if 'post' is enabled
+      if (is_archive() || is_category() || is_tag() || is_author()) {
+        return in_array('post', $enabled_post_types);
+      }
+
+      return false;
     }
 
-    // Sanitize enabled post types
-    if (isset($input['enabled_post_types']) && is_array($input['enabled_post_types'])) {
-      $sanitized['enabled_post_types'] = array_map('sanitize_text_field', $input['enabled_post_types']);
-    } else {
-      $sanitized['enabled_post_types'] = array();
+    private function getPageTitle()
+    {
+      if (is_home() || is_front_page()) {
+        $title = get_bloginfo('name');
+        $tagline = get_bloginfo('description');
+        if ($tagline) {
+          $title .= ' - ' . $tagline;
+        }
+        return $title;
+      }
+
+      if (is_singular()) {
+        return get_the_title();
+      }
+
+      if (is_category()) {
+        return 'Category: ' . single_cat_title('', false);
+      }
+
+      if (is_tag()) {
+        return 'Tag: ' . single_tag_title('', false);
+      }
+
+      if (is_author()) {
+        return 'Author: ' . get_the_author();
+      }
+
+      if (is_archive()) {
+        return wp_title('', false);
+      }
+
+      return get_bloginfo('name');
     }
 
-    return $sanitized;
+    private function getPageDescription()
+    {
+      if (is_singular()) {
+        global $post;
+
+        // Try to get excerpt first
+        if (has_excerpt($post)) {
+          return wp_strip_all_tags(get_the_excerpt());
+        }
+
+        // Get content preview
+        $content = wp_strip_all_tags($post->post_content);
+        if (strlen($content) > 160) {
+          $content = substr($content, 0, 157) . '...';
+        }
+
+        return $content ?: get_bloginfo('description');
+      }
+
+      if (is_category()) {
+        $description = category_description();
+        return $description ? wp_strip_all_tags($description) : 'Browse posts in this category';
+      }
+
+      if (is_tag()) {
+        $description = tag_description();
+        return $description ? wp_strip_all_tags($description) : 'Browse posts with this tag';
+      }
+
+      if (is_author()) {
+        $description = get_the_author_meta('description');
+        return $description ?: 'View posts by this author';
+      }
+
+      return get_bloginfo('description') ?: 'Welcome to our website';
+    }
+
+    private function getCurrentUrl()
+    {
+      if (is_home() || is_front_page()) {
+        return get_home_url();
+      }
+
+      if (is_singular()) {
+        return get_permalink();
+      }
+
+      // For archives, categories, etc.
+      global $wp;
+      return home_url($wp->request);
+    }
+
+    private function getOpenGraphImageUrl()
+    {
+      global $post;
+
+      if (is_singular() && $post) {
+        return $this->generator->getSVGUrl($post->ID);
+      }
+
+      // For home page, archives, etc.
+      return $this->generator->getSVGUrl();
+    }
+
+    private function getOpenGraphType()
+    {
+      if (is_home() || is_front_page()) {
+        return 'website';
+      }
+
+      if (is_singular('post')) {
+        return 'article';
+      }
+
+      if (is_singular()) {
+        return 'website';
+      }
+
+      if (is_author()) {
+        return 'profile';
+      }
+
+      return 'website';
+    }
+
+    /**
+     * Helper method to get schema.org structured data (bonus feature)
+     */
+    public function addStructuredData()
+    {
+      if (!$this->shouldAddOpenGraphTags()) {
+        return;
+      }
+
+      $title = $this->getPageTitle();
+      $description = $this->getPageDescription();
+      $url = $this->getCurrentUrl();
+      $image_url = $this->getOpenGraphImageUrl();
+
+      $schema = array(
+        '@context' => 'https://schema.org',
+        '@type' => is_singular('post') ? 'Article' : 'WebPage',
+        'name' => $title,
+        'description' => $description,
+        'url' => $url,
+      );
+
+      if ($image_url) {
+        $schema['image'] = array(
+          '@type' => 'ImageObject',
+          'url' => $image_url,
+          'width' => 1200,
+          'height' => 630
+        );
+      }
+
+      if (is_singular('post')) {
+        global $post;
+        $schema['datePublished'] = get_the_date('c', $post);
+        $schema['dateModified'] = get_the_modified_date('c', $post);
+        $schema['author'] = array(
+          '@type' => 'Person',
+          'name' => get_the_author_meta('display_name', $post->post_author)
+        );
+      }
+
+      echo '<script type="application/ld+json">';
+      echo wp_json_encode($schema, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+      echo '</script>' . "\n";
+    }
   }
+} // End class_exists check
 
-  public function settingsPage()
-  {
-    if (!current_user_can('manage_options')) {
-      return;
-    }
-
-    // Handle preview generation
-    $preview_url = '';
-    if (isset($_GET['preview']) && $_GET['preview'] === '1') {
-      $generator = new OG_SVG_Generator();
-      $preview_url = $generator->getSVGUrl();
-    }
-
-?>
-    <div class="wrap">
-      <h1>OpenGraph SVG Generator Settings</h1>
-
-      <?php if (isset($_GET['settings-updated'])): ?>
-        <div class="notice notice-success is-dismissible">
-          <p>Settings saved successfully!</p>
-        </div>
-      <?php endif; ?>
-
-      <div style="display: flex; gap: 20px;">
-        <div style="flex: 2;">
-          <form action="options.php" method="post">
-            <?php
-            settings_fields('og_svg_settings_group');
-            do_settings_sections('og-svg-settings');
-            submit_button();
-            ?>
-          </form>
-
-          <h2>Preview & Testing</h2>
-          <p>Test your OpenGraph image settings:</p>
-          <a href="<?php echo admin_url('options-general.php?page=og-svg-settings&preview=1'); ?>" class="button button-secondary">Generate Preview</a>
-
-          <?php if ($preview_url): ?>
-            <div style="margin-top: 20px; padding: 20px; border: 1px solid #ccc; background: #f9f9f9;">
-              <h3>Preview Image</h3>
-              <img src="<?php echo esc_url($preview_url); ?>" style="max-width: 100%; height: auto; border: 1px solid #ddd;" alt="OpenGraph Preview" />
-              <p><strong>Image URL:</strong> <code><?php echo esc_html($preview_url); ?></code></p>
-            </div>
-          <?php endif; ?>
-        </div>
-
-        <div style="flex: 1;">
-          <div class="postbox">
-            <div class="postbox-header">
-              <h2 class="hndle">How It Works</h2>
-            </div>
-            <div class="inside">
-              <p><strong>Automatic Integration:</strong> The plugin automatically adds OpenGraph meta tags to your pages.</p>
-              <p><strong>Dynamic Content:</strong> Each page gets a unique image with its title and your site branding.</p>
-              <p><strong>Performance:</strong> SVG images are generated on-demand and cached for optimal performance.</p>
-              <p><strong>Social Sharing:</strong> When someone shares your content on social media, they'll see your custom branded image.</p>
-            </div>
-          </div>
-
-          <div class="postbox">
-            <div class="postbox-header">
-              <h2 class="hndle">Quick Tips</h2>
-            </div>
-            <div class="inside">
-              <ul>
-                <li>Avatar images work best at 200x200px</li>
-                <li>Use high-contrast color schemes for better readability</li>
-                <li>Test your images on different social platforms</li>
-                <li>Consider your brand colors when choosing a scheme</li>
-              </ul>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <script>
-      jQuery(document).ready(function($) {
-        $('#upload_avatar_button').click(function(e) {
-          e.preventDefault();
-          var mediaUploader = wp.media({
-            title: 'Choose Avatar Image',
-            button: {
-              text: 'Use This Image'
-            },
-            multiple: false
-          });
-
-          mediaUploader.on('select', function() {
-            var attachment = mediaUploader.state().get('selection').first().toJSON();
-            $('#avatar_url').val(attachment.url);
-          });
-
-          mediaUploader.open();
-        });
-      });
-    </script>
-<?php
-  }
-}
+// Optional: Add structured data if desired
+// add_action('wp_head', array('OG_SVG_Meta_Handler', 'addStructuredData'), 10);

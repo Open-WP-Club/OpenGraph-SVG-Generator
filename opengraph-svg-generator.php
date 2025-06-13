@@ -46,10 +46,21 @@ class OpenGraphSVGGenerator
     // Load required files
     $this->loadIncludes();
 
-    // Initialize components
-    new OG_SVG_Admin_Settings();
-    new OG_SVG_Meta_Handler();
-    new OG_SVG_Generator();
+    // Initialize components with error handling
+    try {
+      if (class_exists('OG_SVG_Admin_Settings')) {
+        new OG_SVG_Admin_Settings();
+      }
+      if (class_exists('OG_SVG_Meta_Handler')) {
+        new OG_SVG_Meta_Handler();
+      }
+      if (class_exists('OG_SVG_Generator')) {
+        new OG_SVG_Generator();
+      }
+    } catch (Exception $e) {
+      error_log('OpenGraph SVG Generator initialization error: ' . $e->getMessage());
+      return;
+    }
 
     // Add custom rewrite rules
     add_action('init', array($this, 'addRewriteRules'));
@@ -59,9 +70,16 @@ class OpenGraphSVGGenerator
 
   private function loadIncludes()
   {
-    require_once OG_SVG_PLUGIN_PATH . 'includes/svg-generator.php';
-    require_once OG_SVG_PLUGIN_PATH . 'includes/admin-settings.php';
-    require_once OG_SVG_PLUGIN_PATH . 'includes/meta-handler.php';
+    // Load classes only if they don't exist
+    if (!class_exists('OG_SVG_Generator')) {
+      require_once OG_SVG_PLUGIN_PATH . 'includes/svg-generator.php';
+    }
+    if (!class_exists('OG_SVG_Admin_Settings')) {
+      require_once OG_SVG_PLUGIN_PATH . 'includes/admin-settings.php';
+    }
+    if (!class_exists('OG_SVG_Meta_Handler')) {
+      require_once OG_SVG_PLUGIN_PATH . 'includes/meta-handler.php';
+    }
   }
 
   public function addRewriteRules()
@@ -99,7 +117,7 @@ class OpenGraphSVGGenerator
     // Set default options
     $default_options = array(
       'avatar_url' => get_avatar_url(get_current_user_id(), array('size' => 200)),
-      'color_scheme' => 'blue',
+      'color_scheme' => 'gabriel',
       'show_tagline' => true,
       'enabled_post_types' => array('post', 'page'),
       'fallback_title' => 'Welcome'
