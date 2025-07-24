@@ -10,6 +10,7 @@ jQuery(document).ready(function($) {
     initColorSchemePreview();
     initPreviewGeneration();
     initImageCleanup();
+    initTroubleshooting();
     initFormValidation();
     initTooltips();
   
@@ -203,8 +204,111 @@ jQuery(document).ready(function($) {
     }
   
     /**
-     * Form validation
+     * Troubleshooting tools
      */
+    function initTroubleshooting() {
+      // Flush rewrite rules
+      $('#flush_rewrite_button').on('click', function(e) {
+        e.preventDefault();
+        
+        var $button = $(this);
+        var originalHtml = $button.html();
+        
+        $button.addClass('og-svg-loading').html('<span class="dashicons dashicons-update"></span> Fixing...');
+        
+        $.ajax({
+          url: og_svg_admin.ajax_url,
+          type: 'POST',
+          data: {
+            action: 'og_svg_flush_rewrite',
+            nonce: og_svg_admin.nonce
+          },
+          success: function(response) {
+            if (response.success) {
+              showNotice(response.data.message, 'success');
+            } else {
+              showNotice('Error: ' + response.data.message, 'error');
+            }
+          },
+          error: function(xhr, status, error) {
+            console.error('Flush rewrite failed:', error);
+            showNotice('Failed to flush rewrite rules. Please check console for details.', 'error');
+          },
+          complete: function() {
+            $button.removeClass('og-svg-loading').html(originalHtml);
+          }
+        });
+      });
+  
+      // Test URLs
+      $('#test_url_button').on('click', function(e) {
+        e.preventDefault();
+        
+        var $button = $(this);
+        var originalHtml = $button.html();
+        
+        $button.addClass('og-svg-loading').html('<span class="dashicons dashicons-update"></span> Testing...');
+        
+        $.ajax({
+          url: og_svg_admin.ajax_url,
+          type: 'POST',
+          data: {
+            action: 'og_svg_test_url',
+            nonce: og_svg_admin.nonce
+          },
+          success: function(response) {
+            if (response.success) {
+              showNotice(response.data.message, 'success');
+              console.log('URL Test Details:', response.data.details);
+            } else {
+              showNotice('URL Test Failed: ' + response.data.message, 'error');
+              if (response.data.details) {
+                console.error('URL Test Details:', response.data.details);
+              }
+            }
+          },
+          error: function(xhr, status, error) {
+            console.error('URL test failed:', error);
+            showNotice('Failed to test URLs. Please check console for details.', 'error');
+          },
+          complete: function() {
+            $button.removeClass('og-svg-loading').html(originalHtml);
+          }
+        });
+      });
+  
+      // Test link click handler
+      $('.og-svg-test-link').on('click', function(e) {
+        e.preventDefault();
+        var url = $(this).attr('href');
+        
+        // Open in new tab and show loading message
+        var newWindow = window.open('', '_blank');
+        newWindow.document.write('<html><body><h2>Testing OpenGraph SVG URL...</h2><p>Loading: ' + url + '</p></body></html>');
+        
+        // Test the URL first
+        $.ajax({
+          url: og_svg_admin.ajax_url,
+          type: 'POST',
+          data: {
+            action: 'og_svg_test_url',
+            nonce: og_svg_admin.nonce
+          },
+          success: function(response) {
+            if (response.success) {
+              // URL is working, redirect to it
+              newWindow.location.href = url;
+            } else {
+              // URL failed, show error
+              newWindow.document.write('<html><body><h2>URL Test Failed</h2><p>Error: ' + response.data.message + '</p><p>Try clicking "Fix URL Issues" button first.</p></body></html>');
+            }
+          },
+          error: function() {
+            newWindow.document.write('<html><body><h2>URL Test Failed</h2><p>Could not test the URL. Please try manually.</p></body></html>');
+          }
+        });
+      });
+    }
     function initFormValidation() {
       $('.og-svg-settings-form').on('submit', function(e) {
         var isValid = true;

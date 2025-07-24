@@ -91,6 +91,11 @@ if (!class_exists('OG_SVG_Generator')) {
     public function serveSVG($post_id = null)
     {
       try {
+        // Debug logging
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+          error_log('OG SVG: Serving SVG for post_id: ' . ($post_id ?? 'home'));
+        }
+
         // Set proper headers
         header('Content-Type: image/svg+xml');
         header('Cache-Control: public, max-age=3600');
@@ -102,11 +107,18 @@ if (!class_exists('OG_SVG_Generator')) {
         // Save to file system and media library if configured
         $this->saveSVGToMedia($svg_content, $post_id);
 
+        // Output the SVG
         echo $svg_content;
+
+        // Debug logging
+        if (defined('WP_DEBUG') && WP_DEBUG) {
+          error_log('OG SVG: Successfully served SVG (' . strlen($svg_content) . ' bytes)');
+        }
       } catch (Exception $e) {
         // Log error and serve fallback
         error_log('OG SVG Generator Error: ' . $e->getMessage());
-        $this->serveFallbackSVG();
+        error_log('OG SVG Stack trace: ' . $e->getTraceAsString());
+        $this->serveFallbackSVG($e->getMessage());
       }
     }
 
@@ -362,14 +374,36 @@ if (!class_exists('OG_SVG_Generator')) {
       }
     }
 
-    private function serveFallbackSVG()
+    private function serveFallbackSVG($error_message = null)
     {
-      $fallback = '<?xml version="1.0" encoding="UTF-8"?>';
-      $fallback .= '<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">';
-      $fallback .= '<rect width="1200" height="630" fill="#1e293b"/>';
-      $fallback .= '<text x="600" y="315" font-family="system-ui, sans-serif" font-size="36" font-weight="600" fill="#f8fafc" text-anchor="middle">';
-      $fallback .= get_bloginfo('name') ?: 'WordPress Site';
-      $fallback .= '</text>';
+      // Set headers
+      header('Content-Type: image/svg+xml');
+      header('Cache-Control: public, max-age=300'); // Shorter cache for fallback
+
+      $site_name = get_bloginfo('name') ?: 'WordPress Site';
+      $debug_info = '';
+
+      if (defined('WP_DEBUG') && WP_DEBUG && $error_message) {
+        $debug_info = '<!-- Error: ' . esc_html($error_message) . ' -->' . "\n";
+      }
+
+      $fallback = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
+      $fallback .= $debug_info;
+      $fallback .= '<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">' . "\n";
+      $fallback .= '<rect width="1200" height="630" fill="#1e293b"/>' . "\n";
+      $fallback .= '<text x="600" y="280" font-family="system-ui, sans-serif" font-size="36" font-weight="600" fill="#f8fafc" text-anchor="middle">' . "\n";
+      $fallback .= htmlspecialchars($site_name, ENT_XML1, 'UTF-8') . "\n";
+      $fallback .= '</text>' . "\n";
+      $fallback .= '<text x="600" y="320" font-family="system-ui, sans-serif" font-size="16" fill="#cbd5e1" text-anchor="middle">' . "\n";
+      $fallback .= 'OpenGraph Image' . "\n";
+      $fallback .= '</text>' . "\n";
+
+      if (defined('WP_DEBUG') && WP_DEBUG && $error_message) {
+        $fallback .= '<text x="600" y="360" font-family="monospace" font-size="12" fill="#ef4444" text-anchor="middle">' . "\n";
+        $fallback .= 'Debug: ' . htmlspecialchars(substr($error_message, 0, 80), ENT_XML1, 'UTF-8') . "\n";
+        $fallback .= '</text>' . "\n";
+      }
+
       $fallback .= '</svg>';
 
       echo $fallback;
@@ -493,6 +527,51 @@ if (!class_exists('OG_SVG_Generator')) {
         'files_removed' => $count,
         'attachments_removed' => count($attachments)
       );
+    }
+    public function cleanupOrphanedFiles()
+    {
+      $upload_dir = wp_upload_dir();
+      $svg_dir = $upload_dir['basedir'] . '/og-svg/';
+      $cleaned = 0;
+
+      if (is_dir($svg_dir)) {
+        $files = glob($svg_dir . 'og-svg-*.svg');
+
+        foreach ($files as $file) {
+          $filename = basename($file);
+
+          // Extract post ID from filename
+          if (preg_match('/og-svg-(\d+)\.svg/', $filename, $matches)) {
+            $post_id = $matches[1];
+
+            // Check if post still exists
+            if (!get_post($post_id)) {
+              unlink($file);
+              $cleaned++;
+
+              // Also remove from media library
+              $attachments = get_posts(array(
+                'post_type' => 'attachment',
+                'meta_query' => array(
+                  array(
+                    'key' => '_og_svg_post_id',
+                    'value' => $post_id,
+                    'compare' => '='
+                  )
+                ),
+                'posts_per_page' => 1,
+                'fields' => 'ids'
+              ));
+
+              foreach ($attachments as $attachment_id) {
+                wp_delete_attachment($attachment_id, true);
+              }
+            }
+          }
+        }
+      }
+
+      return $cleaned;
     }
   }
 } // End class_exists check

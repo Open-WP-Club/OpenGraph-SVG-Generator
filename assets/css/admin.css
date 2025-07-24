@@ -609,3 +609,54 @@
     gap: 12px;
   }
 }
+
+/* Troubleshooting section */
+.og-svg-troubleshooting {
+  padding: 20px;
+}
+
+.og-svg-status-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.og-svg-status-item:last-child {
+  border-bottom: none;
+}
+
+.og-svg-status-label {
+  font-weight: 500;
+  color: #1e293b;
+  font-size: 13px;
+}
+
+.og-svg-status-value {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.og-svg-status-ok {
+  color: #22c55e;
+}
+
+.og-svg-status-warning {
+  color: #f59e0b;
+}
+
+.og-svg-status-error {
+  color: #ef4444;
+}
+
+.og-svg-test-link {
+  color: #3b82f6;
+  text-decoration: none;
+  font-family: monospace;
+  font-size: 11px;
+}
+
+.og-svg-test-link:hover {
+  text-decoration: underline;
+}

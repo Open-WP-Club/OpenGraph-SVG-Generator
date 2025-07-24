@@ -23,6 +23,8 @@ if (!class_exists('OG_SVG_Admin_Settings')) {
       add_action('admin_enqueue_scripts', array($this, 'enqueueAdminScripts'));
       add_action('wp_ajax_og_svg_generate_preview', array($this, 'ajaxGeneratePreview'));
       add_action('wp_ajax_og_svg_cleanup_images', array($this, 'ajaxCleanupImages'));
+      add_action('wp_ajax_og_svg_flush_rewrite', array($this, 'ajaxFlushRewrite'));
+      add_action('wp_ajax_og_svg_test_url', array($this, 'ajaxTestUrl'));
 
       $this->settings = get_option('og_svg_settings', array());
     }
@@ -319,7 +321,7 @@ if (!class_exists('OG_SVG_Admin_Settings')) {
       }
     }
 
-    public function ajaxCleanupImages()
+    public function ajaxFlushRewrite()
     {
       // Verify nonce
       if (!wp_verify_nonce($_POST['nonce'], 'og_svg_admin_nonce')) {
@@ -331,48 +333,67 @@ if (!class_exists('OG_SVG_Admin_Settings')) {
       }
 
       try {
-        // Remove generated SVG files from uploads directory
-        $upload_dir = wp_upload_dir();
-        $svg_dir = $upload_dir['basedir'] . '/og-svg/';
-
-        $count = 0;
-        if (is_dir($svg_dir)) {
-          $files = glob($svg_dir . '*.svg');
-          foreach ($files as $file) {
-            if (unlink($file)) {
-              $count++;
-            }
-          }
-
-          // Remove directory if empty
-          if (count(glob($svg_dir . '*')) === 0) {
-            rmdir($svg_dir);
-          }
-        }
-
-        // Remove from media library
-        $attachments = get_posts(array(
-          'post_type' => 'attachment',
-          'meta_query' => array(
-            array(
-              'key' => '_og_svg_generated',
-              'value' => '1',
-              'compare' => '='
-            )
-          ),
-          'posts_per_page' => -1
-        ));
-
-        foreach ($attachments as $attachment) {
-          wp_delete_attachment($attachment->ID, true);
-        }
+        // Force flush rewrite rules
+        flush_rewrite_rules(true);
 
         wp_send_json_success(array(
-          'message' => sprintf('Successfully removed %d SVG files and %d media library entries.', $count, count($attachments))
+          'message' => 'Rewrite rules flushed successfully! Please test the URLs again.'
         ));
       } catch (Exception $e) {
         wp_send_json_error(array(
-          'message' => 'Failed to cleanup images: ' . $e->getMessage()
+          'message' => 'Failed to flush rewrite rules: ' . $e->getMessage()
+        ));
+      }
+    }
+
+    public function ajaxTestUrl()
+    {
+      // Verify nonce
+      if (!wp_verify_nonce($_POST['nonce'], 'og_svg_admin_nonce')) {
+        wp_die('Security check failed');
+      }
+
+      if (!current_user_can('manage_options')) {
+        wp_die('Insufficient permissions');
+      }
+
+      try {
+        $test_url = get_site_url() . '/og-svg/home/';
+
+        // Test the URL
+        $response = wp_safe_remote_head($test_url, array(
+          'timeout' => 10,
+          'sslverify' => false
+        ));
+
+        if (is_wp_error($response)) {
+          throw new Exception('URL test failed: ' . $response->get_error_message());
+        }
+
+        $response_code = wp_remote_retrieve_response_code($response);
+        $content_type = wp_remote_retrieve_header($response, 'content-type');
+
+        if ($response_code === 200) {
+          wp_send_json_success(array(
+            'message' => 'URL is working correctly!',
+            'details' => array(
+              'url' => $test_url,
+              'response_code' => $response_code,
+              'content_type' => $content_type
+            )
+          ));
+        } else {
+          wp_send_json_error(array(
+            'message' => 'URL returned status code: ' . $response_code,
+            'details' => array(
+              'url' => $test_url,
+              'response_code' => $response_code
+            )
+          ));
+        }
+      } catch (Exception $e) {
+        wp_send_json_error(array(
+          'message' => 'URL test failed: ' . $e->getMessage()
         ));
       }
     }
@@ -451,6 +472,42 @@ if (!class_exists('OG_SVG_Admin_Settings')) {
                   <span class="dashicons dashicons-trash"></span> Remove All Generated Images
                 </button>
                 <p class="og-svg-tool-description">This will remove all generated SVG files from your server and media library.</p>
+
+                <button type="button" class="button button-secondary og-svg-full-width" id="flush_rewrite_button">
+                  <span class="dashicons dashicons-update"></span> Fix URL Issues
+                </button>
+                <p class="og-svg-tool-description">If OpenGraph URLs are not working, this will refresh the URL structure.</p>
+
+                <button type="button" class="button button-secondary og-svg-full-width" id="test_url_button">
+                  <span class="dashicons dashicons-admin-links"></span> Test URLs
+                </button>
+                <p class="og-svg-tool-description">Test if the OpenGraph URLs are working correctly.</p>
+              </div>
+            </div>
+
+            <div class="og-svg-sidebar-card">
+              <h3><span class="dashicons dashicons-info"></span> Troubleshooting</h3>
+              <div class="og-svg-troubleshooting">
+                <div class="og-svg-status-item">
+                  <span class="og-svg-status-label">Upload Directory:</span>
+                  <span class="og-svg-status-value <?php echo is_writable(wp_upload_dir()['basedir']) ? 'og-svg-status-ok' : 'og-svg-status-error'; ?>">
+                    <?php echo is_writable(wp_upload_dir()['basedir']) ? 'Writable' : 'Not Writable'; ?>
+                  </span>
+                </div>
+                <div class="og-svg-status-item">
+                  <span class="og-svg-status-label">Permalinks:</span>
+                  <span class="og-svg-status-value <?php echo get_option('permalink_structure') ? 'og-svg-status-ok' : 'og-svg-status-warning'; ?>">
+                    <?php echo get_option('permalink_structure') ? 'Enabled' : 'Plain URLs'; ?>
+                  </span>
+                </div>
+                <div class="og-svg-status-item">
+                  <span class="og-svg-status-label">Test URL:</span>
+                  <span class="og-svg-status-value">
+                    <a href="<?php echo get_site_url() . '/og-svg/home/'; ?>" target="_blank" class="og-svg-test-link">
+                      <?php echo parse_url(get_site_url(), PHP_URL_HOST) . '/og-svg/home/'; ?>
+                    </a>
+                  </span>
+                </div>
               </div>
             </div>
 
