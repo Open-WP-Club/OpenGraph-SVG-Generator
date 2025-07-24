@@ -38,24 +38,38 @@ if (!class_exists('OG_SVG_Generator')) {
       }
     }
 
-    public function serveSVG($post_id = null)
+    public function serveSVG($post_id = null, $preview_settings = null)
     {
       try {
         // Debug logging
         if (defined('WP_DEBUG') && WP_DEBUG) {
-          error_log('OG SVG: Serving SVG for post_id: ' . ($post_id ?? 'home'));
+          error_log('OG SVG: Serving SVG for post_id: ' . ($post_id ?? 'home') . ($preview_settings ? ' (preview mode)' : ''));
         }
 
         // Set proper headers
         header('Content-Type: image/svg+xml');
-        header('Cache-Control: public, max-age=3600');
-        header('Expires: ' . gmdate('D, d M Y H:i:s', time() + 3600) . ' GMT');
 
-        // Generate and output SVG
-        $svg_content = $this->generateSVG($post_id);
+        if ($preview_settings) {
+          // Don't cache preview images
+          header('Cache-Control: no-cache, no-store, must-revalidate');
+          header('Pragma: no-cache');
+          header('Expires: 0');
+        } else {
+          header('Cache-Control: public, max-age=3600');
+          header('Expires: ' . gmdate('D, d M Y H:i:s', time() + 3600) . ' GMT');
+        }
 
-        // Save to file system and media library if configured
-        $this->saveSVGToMedia($svg_content, $post_id);
+        // Generate SVG content with preview settings if provided
+        if ($preview_settings) {
+          $svg_content = $this->generateSVGWithSettings($post_id, $preview_settings);
+        } else {
+          $svg_content = $this->generateSVG($post_id);
+        }
+
+        // Only save to media for non-preview requests
+        if (!$preview_settings) {
+          $this->saveSVGToMedia($svg_content, $post_id);
+        }
 
         // Output the SVG
         echo $svg_content;
@@ -69,6 +83,26 @@ if (!class_exists('OG_SVG_Generator')) {
         error_log('OG SVG Generator Error: ' . $e->getMessage());
         error_log('OG SVG Stack trace: ' . $e->getTraceAsString());
         $this->serveFallbackSVG($e->getMessage());
+      }
+    }
+
+    public function generateSVGWithSettings($post_id = null, $custom_settings = array())
+    {
+      // Temporarily override settings
+      $original_settings = $this->settings;
+      $this->settings = array_merge($this->settings, $custom_settings);
+
+      try {
+        $svg_content = $this->generateSVG($post_id);
+
+        // Restore original settings
+        $this->settings = $original_settings;
+
+        return $svg_content;
+      } catch (Exception $e) {
+        // Restore original settings even on error
+        $this->settings = $original_settings;
+        throw $e;
       }
     }
 

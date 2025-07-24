@@ -243,9 +243,22 @@ if (!class_exists('OG_SVG_Admin_Settings')) {
         $sanitized['avatar_url'] = esc_url_raw($input['avatar_url']);
       }
 
-      $valid_schemes = array('gabriel', 'blue', 'purple', 'dark', 'green');
-      if (isset($input['color_scheme']) && in_array($input['color_scheme'], $valid_schemes)) {
-        $sanitized['color_scheme'] = $input['color_scheme'];
+      // Validate theme selection dynamically
+      if (isset($input['color_scheme'])) {
+        try {
+          $generator = new OG_SVG_Generator();
+          $available_themes = $generator->getAvailableThemes();
+
+          if (array_key_exists($input['color_scheme'], $available_themes)) {
+            $sanitized['color_scheme'] = $input['color_scheme'];
+          } else {
+            $sanitized['color_scheme'] = 'gabriel'; // fallback
+            add_settings_error('og_svg_settings', 'invalid_theme', 'Selected theme is not available. Defaulted to Gabriel theme.');
+          }
+        } catch (Exception $e) {
+          $sanitized['color_scheme'] = 'gabriel';
+          add_settings_error('og_svg_settings', 'theme_error', 'Error loading themes. Defaulted to Gabriel theme.');
+        }
       } else {
         $sanitized['color_scheme'] = 'gabriel';
       }
@@ -276,12 +289,44 @@ if (!class_exists('OG_SVG_Admin_Settings')) {
       }
 
       try {
+        // Parse form data to get current settings
+        $preview_settings = array();
+
+        if (isset($_POST['settings_data'])) {
+          parse_str($_POST['settings_data'], $form_data);
+
+          if (isset($form_data['og_svg_settings'])) {
+            $form_settings = $form_data['og_svg_settings'];
+
+            // Map form data to preview settings
+            if (isset($form_settings['color_scheme'])) {
+              $preview_settings['color_scheme'] = sanitize_text_field($form_settings['color_scheme']);
+            }
+            if (isset($form_settings['avatar_url'])) {
+              $preview_settings['avatar_url'] = esc_url_raw($form_settings['avatar_url']);
+            }
+            if (isset($form_settings['show_tagline'])) {
+              $preview_settings['show_tagline'] = true;
+            } else {
+              $preview_settings['show_tagline'] = false;
+            }
+            if (isset($form_settings['fallback_title'])) {
+              $preview_settings['fallback_title'] = sanitize_text_field($form_settings['fallback_title']);
+            }
+          }
+        }
+
+        // Generate preview SVG content
         $generator = new OG_SVG_Generator();
-        $preview_url = $generator->getSVGUrl();
+        $svg_content = $generator->generateSVGWithSettings(null, $preview_settings);
+
+        // Create a data URL for immediate display
+        $data_url = 'data:image/svg+xml;base64,' . base64_encode($svg_content);
 
         wp_send_json_success(array(
-          'image_url' => $preview_url,
-          'message' => 'Preview generated successfully!'
+          'image_url' => $data_url,
+          'message' => 'Preview generated successfully!',
+          'theme' => $preview_settings['color_scheme'] ?? $this->settings['color_scheme'] ?? 'gabriel'
         ));
       } catch (Exception $e) {
         wp_send_json_error(array(
@@ -590,6 +635,11 @@ if (!class_exists('OG_SVG_Admin_Settings')) {
             <p><strong>Settings saved successfully!</strong> Your OpenGraph images will now use the updated configuration.</p>
           </div>
         <?php endif; ?>
+
+        <?php
+        // Show any settings errors
+        settings_errors('og_svg_settings');
+        ?>
 
         <div class="og-svg-admin-container">
           <div class="og-svg-main-content">
