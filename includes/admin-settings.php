@@ -436,21 +436,38 @@ if (!class_exists('OG_SVG_Admin_Settings')) {
 
     public function ajaxBulkGenerate()
     {
-      if (!wp_verify_nonce($_POST['nonce'], 'og_svg_admin_nonce')) {
-        wp_die('Security check failed');
-      }
-
-      if (!current_user_can('manage_options')) {
-        wp_die('Insufficient permissions');
+      // Enable error reporting for debugging
+      if (defined('WP_DEBUG') && WP_DEBUG) {
+        error_reporting(E_ALL);
+        ini_set('display_errors', 1);
       }
 
       try {
-        $settings = get_option('og_svg_settings', array());
-        $enabled_types = $settings['enabled_post_types'] ?? array('post', 'page');
-        $force_regenerate = isset($_POST['force']) && $_POST['force'];
-        $batch_size = 5;
-        $offset = intval($_POST['offset'] ?? 0);
+        // Verify nonce
+        if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'og_svg_admin_nonce')) {
+          wp_send_json_error(array('message' => 'Security check failed'));
+          return;
+        }
 
+        if (!current_user_can('manage_options')) {
+          wp_send_json_error(array('message' => 'Insufficient permissions'));
+          return;
+        }
+
+        // Get settings
+        $settings = get_option('og_svg_settings', array());
+        $enabled_types = isset($settings['enabled_post_types']) ? $settings['enabled_post_types'] : array('post', 'page');
+        $force_regenerate = isset($_POST['force']) && $_POST['force'] === '1';
+        $batch_size = 3; // Smaller batch size to prevent timeouts
+        $offset = isset($_POST['offset']) ? intval($_POST['offset']) : 0;
+
+        // Validate settings
+        if (empty($enabled_types)) {
+          wp_send_json_error(array('message' => 'No post types enabled for generation'));
+          return;
+        }
+
+        // Get posts to process
         $query_args = array(
           'post_type' => $enabled_types,
           'post_status' => 'publish',
@@ -461,6 +478,7 @@ if (!class_exists('OG_SVG_Admin_Settings')) {
 
         $posts = get_posts($query_args);
 
+        // If no more posts, we're done
         if (empty($posts)) {
           wp_send_json_success(array(
             'completed' => true,
@@ -470,36 +488,70 @@ if (!class_exists('OG_SVG_Admin_Settings')) {
           return;
         }
 
+        // Initialize generator
+        if (!class_exists('OG_SVG_Generator')) {
+          wp_send_json_error(array('message' => 'SVG Generator class not found'));
+          return;
+        }
+
         $generator = new OG_SVG_Generator();
         $generated = 0;
         $skipped = 0;
         $errors = array();
 
+        // Process each post
         foreach ($posts as $post_id) {
           try {
+            // Check if file already exists
             $file_path = $generator->getSVGFilePath($post_id);
 
-            if (!$force_regenerate && file_exists($file_path)) {
+            if (!$force_regenerate && file_exists($file_path) && filesize($file_path) > 0) {
               $skipped++;
-            } else {
-              $svg_content = $generator->generateSVG($post_id);
-              file_put_contents($file_path, $svg_content);
-              $generator->saveSVGToMedia($svg_content, $post_id);
-              $generated++;
+              continue;
             }
+
+            // Generate SVG content
+            $svg_content = $generator->generateSVG($post_id);
+
+            if (empty($svg_content)) {
+              $errors[] = "Post {$post_id}: Generated empty SVG";
+              continue;
+            }
+
+            // Save to file system
+            $bytes_written = file_put_contents($file_path, $svg_content);
+
+            if ($bytes_written === false) {
+              $errors[] = "Post {$post_id}: Failed to write file";
+              continue;
+            }
+
+            // Try to save to media library (non-critical)
+            try {
+              $generator->saveSVGToMedia($svg_content, $post_id);
+            } catch (Exception $media_error) {
+              error_log('Media library save failed for post ' . $post_id . ': ' . $media_error->getMessage());
+              // Continue anyway, file system save succeeded
+            }
+
+            $generated++;
           } catch (Exception $e) {
             $errors[] = "Post {$post_id}: " . $e->getMessage();
+            error_log('OG SVG bulk generation error for post ' . $post_id . ': ' . $e->getMessage());
           }
         }
 
+        // Get total count for progress calculation
         $total_query = array(
           'post_type' => $enabled_types,
           'post_status' => 'publish',
           'posts_per_page' => -1,
           'fields' => 'ids'
         );
-        $total_posts = count(get_posts($total_query));
+        $all_posts = get_posts($total_query);
+        $total_posts = count($all_posts);
 
+        // Return progress update
         wp_send_json_success(array(
           'completed' => false,
           'processed' => $offset + count($posts),
@@ -517,8 +569,14 @@ if (!class_exists('OG_SVG_Admin_Settings')) {
           )
         ));
       } catch (Exception $e) {
+        error_log('OG SVG bulk generation fatal error: ' . $e->getMessage());
         wp_send_json_error(array(
           'message' => 'Bulk generation failed: ' . $e->getMessage()
+        ));
+      } catch (Error $e) {
+        error_log('OG SVG bulk generation PHP error: ' . $e->getMessage());
+        wp_send_json_error(array(
+          'message' => 'PHP Error: ' . $e->getMessage()
         ));
       }
     }

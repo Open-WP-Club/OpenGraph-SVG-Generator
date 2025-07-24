@@ -3,7 +3,6 @@
 /**
  * SVG Generator Class
  * Handles the generation and serving of OpenGraph SVG images
- * Enhanced with better error handling and media library integration
  */
 
 if (!defined('ABSPATH')) {
@@ -324,7 +323,7 @@ if (!class_exists('OG_SVG_Generator')) {
       return 'data:' . $content_type . ';base64,' . base64_encode($body);
     }
 
-    private function saveSVGToMedia($svg_content, $post_id = null)
+    public function saveSVGToMedia($svg_content, $post_id = null)
     {
       try {
         // Generate filename
@@ -528,6 +527,7 @@ if (!class_exists('OG_SVG_Generator')) {
         'attachments_removed' => count($attachments)
       );
     }
+
     public function cleanupOrphanedFiles()
     {
       $upload_dir = wp_upload_dir();
