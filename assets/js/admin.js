@@ -147,8 +147,7 @@ jQuery(document).ready(function($) {
   function showPreview(imageUrl) {
     var previewHtml = '<div class="og-svg-preview-result">' +
       '<img src="' + imageUrl + '" class="og-svg-preview-image" alt="OpenGraph Preview" />' +
-      '<div class="og-svg-preview-url">' + imageUrl + '</div>' +
-      '<p><strong>Note:</strong> This preview shows how your OpenGraph image will appear when shared on social media.</p>' +
+      '<p><strong>Preview:</strong> This shows how your OpenGraph image will appear when shared on social media.</p>' +
       '</div>';
     
     $('#preview_container').html(previewHtml);

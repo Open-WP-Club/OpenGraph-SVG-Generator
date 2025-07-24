@@ -129,9 +129,10 @@ class OG_SVG_Theme_Creative extends OG_SVG_Theme_Base
     if ($avatar_data) {
       $avatar .= '<image x="135" y="135" width="130" height="130" href="' . $avatar_data . '" clip-path="url(#avatarClip)" transform="translate(65,65)"/>' . "\n";
     } else {
-      // Creative fallback with colors
+      // Creative fallback with colors - always show something
       $avatar .= '<circle cx="200" cy="200" r="50" fill="rgba(245, 158, 11, 0.3)"/>' . "\n";
-      $avatar .= '<path d="M200 170 c-11 0 -20 9 -20 20 s 9 20 20 20 s 20 -9 20 -20 s -9 -20 -20 -20 z M200 220 c-16.5 0 -30 13.5 -30 30 l 60 0 c 0 -16.5 -13.5 -30 -30 -30 z" fill="rgba(239, 68, 68, 0.8)"/>' . "\n";
+      $avatar .= '<circle cx="200" cy="200" r="35" fill="rgba(239, 68, 68, 0.4)"/>' . "\n";
+      $avatar .= '<path d="M200 180 c-8 0 -15 7 -15 15 s 7 15 15 15 s 15 -7 15 -15 s -7 -15 -15 -15 z M200 210 c-12 0 -22 10 -22 22 l 44 0 c 0 -12 -10 -22 -22 -22 z" fill="rgba(255,255,255,0.9)"/>' . "\n";
     }
 
     return $avatar;
