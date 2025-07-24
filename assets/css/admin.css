@@ -499,24 +499,6 @@
   line-height: 1.4;
 }
 
-/* Social platforms */
-.og-svg-social-platforms {
-  padding: 20px;
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-}
-
-.og-svg-platform {
-  background: #f1f5f9;
-  color: #475569;
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  font-weight: 500;
-  border: 1px solid #e2e8f0;
-}
-
 /* Loading states */
 .og-svg-loading {
   opacity: 0.6;

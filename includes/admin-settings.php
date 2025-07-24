@@ -680,18 +680,6 @@ if (!class_exists('OG_SVG_Admin_Settings')) {
                 </div>
               </div>
             </div>
-
-            <div class="og-svg-sidebar-card">
-              <h3><span class="dashicons dashicons-share"></span> Social Platforms</h3>
-              <div class="og-svg-social-platforms">
-                <span class="og-svg-platform">Facebook</span>
-                <span class="og-svg-platform">Twitter</span>
-                <span class="og-svg-platform">LinkedIn</span>
-                <span class="og-svg-platform">Discord</span>
-                <span class="og-svg-platform">Slack</span>
-                <span class="og-svg-platform">WhatsApp</span>
-              </div>
-            </div>
           </div>
         </div>
       </div>
