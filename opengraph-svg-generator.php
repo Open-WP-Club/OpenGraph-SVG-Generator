@@ -2,8 +2,8 @@
 
 /**
  * Plugin Name: OpenGraph SVG Generator
- * Description: Dynamically generates beautiful SVG OpenGraph images using WordPress site title, page titles, and custom avatar.
- * Version: 1.1.0
+ * Description: Dynamically generates beautiful SVG OpenGraph images using WordPress site title, page titles, and custom avatar. Features modular theme system.
+ * Version: 1.2.0
  * Author: Gabriel Kanev
  * Text Domain: og-svg-generator
  * Requires at least: 5.0
@@ -21,7 +21,7 @@ if (!defined('ABSPATH')) {
 // Define plugin constants
 define('OG_SVG_PLUGIN_URL', plugin_dir_url(__FILE__));
 define('OG_SVG_PLUGIN_PATH', plugin_dir_path(__FILE__));
-define('OG_SVG_VERSION', '1.1.0');
+define('OG_SVG_VERSION', '1.2.0');
 define('OG_SVG_MIN_PHP_VERSION', '7.4');
 define('OG_SVG_MIN_WP_VERSION', '5.0');
 
@@ -105,6 +105,9 @@ class OpenGraphSVGGenerator
       $this->initializeComponents();
     } catch (Exception $e) {
       error_log('OpenGraph SVG Generator initialization failed: ' . $e->getMessage());
+      add_action('admin_notices', function () use ($e) {
+        echo '<div class="notice notice-error"><p><strong>OpenGraph SVG Generator:</strong> ' . esc_html($e->getMessage()) . '</p></div>';
+      });
       return;
     }
 
@@ -118,10 +121,26 @@ class OpenGraphSVGGenerator
       wp_schedule_event(time(), 'weekly', 'og_svg_cleanup_cron');
     }
     add_action('og_svg_cleanup_cron', array($this, 'scheduledCleanup'));
+
+    // Create themes directory if it doesn't exist
+    $this->ensureThemesDirectory();
   }
 
   private function loadIncludes()
   {
+    // Load theme system first
+    $theme_base_path = OG_SVG_PLUGIN_PATH . 'themes/base-theme.php';
+    $theme_manager_path = OG_SVG_PLUGIN_PATH . 'themes/theme-manager.php';
+
+    if (file_exists($theme_base_path)) {
+      require_once $theme_base_path;
+    }
+
+    if (file_exists($theme_manager_path)) {
+      require_once $theme_manager_path;
+    }
+
+    // Load main includes
     $includes = array(
       'includes/svg-generator.php' => 'OG_SVG_Generator',
       'includes/admin-settings.php' => 'OG_SVG_Admin_Settings',
@@ -151,6 +170,8 @@ class OpenGraphSVGGenerator
   {
     if (class_exists('OG_SVG_Generator')) {
       $this->components['generator'] = new OG_SVG_Generator();
+    } else {
+      throw new Exception('SVG Generator class not found');
     }
 
     if (is_admin() && class_exists('OG_SVG_Admin_Settings')) {
@@ -159,6 +180,19 @@ class OpenGraphSVGGenerator
 
     if (class_exists('OG_SVG_Meta_Handler')) {
       $this->components['meta'] = new OG_SVG_Meta_Handler();
+    }
+
+    // Log successful initialization
+    if (defined('WP_DEBUG') && WP_DEBUG) {
+      error_log('OpenGraph SVG Generator: All components initialized successfully');
+    }
+  }
+
+  private function ensureThemesDirectory()
+  {
+    $themes_dir = OG_SVG_PLUGIN_PATH . 'themes/';
+    if (!file_exists($themes_dir)) {
+      wp_mkdir_p($themes_dir);
     }
   }
 
@@ -187,6 +221,11 @@ class OpenGraphSVGGenerator
     $is_home = get_query_var('og_svg_home');
 
     if ($post_id || $is_home) {
+      // Debug logging
+      if (defined('WP_DEBUG') && WP_DEBUG) {
+        error_log('OG SVG: Handling request - post_id: ' . ($post_id ?: 'none') . ', is_home: ' . ($is_home ?: 'no'));
+      }
+
       if (!isset($this->components['generator'])) {
         status_header(500);
         exit('SVG Generator not available');
@@ -200,6 +239,9 @@ class OpenGraphSVGGenerator
         } elseif ($post_id) {
           $post = get_post($post_id);
           if (!$post || $post->post_status !== 'publish') {
+            if (defined('WP_DEBUG') && WP_DEBUG) {
+              error_log('OG SVG: Post not found or not published: ' . $post_id);
+            }
             status_header(404);
             exit('Post not found');
           }
@@ -208,7 +250,7 @@ class OpenGraphSVGGenerator
 
         exit;
       } catch (Exception $e) {
-        error_log('OG SVG serving failed: ' . $e->getMessage());
+        error_log('OG SVG: Request handling failed - ' . $e->getMessage());
         status_header(500);
         exit('SVG generation failed');
       }
@@ -247,6 +289,12 @@ class OpenGraphSVGGenerator
     $svg_dir = $upload_dir['basedir'] . '/og-svg/';
     if (!file_exists($svg_dir)) {
       wp_mkdir_p($svg_dir);
+    }
+
+    // Create themes directory
+    $themes_dir = OG_SVG_PLUGIN_PATH . 'themes/';
+    if (!file_exists($themes_dir)) {
+      wp_mkdir_p($themes_dir);
     }
 
     // Flush rewrite rules
@@ -314,6 +362,17 @@ class OpenGraphSVGGenerator
     $settings = get_option('og_svg_settings', array());
     return !empty($settings['enabled_post_types']);
   }
+
+  /**
+   * Get available themes (for external use)
+   */
+  public function getAvailableThemes()
+  {
+    if (isset($this->components['generator'])) {
+      return $this->components['generator']->getAvailableThemes();
+    }
+    return array();
+  }
 }
 
 // Initialize the plugin
@@ -368,4 +427,13 @@ function og_svg_get_setting($key = null)
   }
 
   return isset($settings[$key]) ? $settings[$key] : null;
+}
+
+/**
+ * Get available themes
+ */
+function og_svg_get_themes()
+{
+  $instance = OpenGraphSVGGenerator::getInstance();
+  return $instance->getAvailableThemes();
 }

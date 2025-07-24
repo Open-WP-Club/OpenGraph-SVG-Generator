@@ -15,68 +15,19 @@ if (!class_exists('OG_SVG_Generator')) {
   {
 
     private $settings;
-    private $color_schemes;
     private $upload_dir;
+    private $theme_manager;
 
     public function __construct()
     {
       $this->settings = get_option('og_svg_settings', array());
-      $this->initColorSchemes();
       $this->upload_dir = wp_upload_dir();
+
+      // Initialize theme manager
+      $this->theme_manager = new OG_SVG_Theme_Manager();
 
       // Ensure upload directory exists
       $this->ensureUploadDirectory();
-    }
-
-    private function initColorSchemes()
-    {
-      $this->color_schemes = array(
-        'gabriel' => array(
-          'background' => '#0f172a',
-          'gradient_start' => '#1e293b',
-          'gradient_end' => '#0f172a',
-          'text_primary' => '#f8fafc',
-          'text_secondary' => '#cbd5e1',
-          'accent' => '#3b82f6',
-          'accent_secondary' => '#06b6d4'
-        ),
-        'blue' => array(
-          'background' => '#1e40af',
-          'gradient_start' => '#3b82f6',
-          'gradient_end' => '#1e40af',
-          'text_primary' => '#ffffff',
-          'text_secondary' => '#e5e7eb',
-          'accent' => '#60a5fa',
-          'accent_secondary' => '#93c5fd'
-        ),
-        'purple' => array(
-          'background' => '#7c3aed',
-          'gradient_start' => '#a855f7',
-          'gradient_end' => '#7c3aed',
-          'text_primary' => '#ffffff',
-          'text_secondary' => '#e5e7eb',
-          'accent' => '#c084fc',
-          'accent_secondary' => '#ddd6fe'
-        ),
-        'dark' => array(
-          'background' => '#111827',
-          'gradient_start' => '#374151',
-          'gradient_end' => '#111827',
-          'text_primary' => '#ffffff',
-          'text_secondary' => '#d1d5db',
-          'accent' => '#6b7280',
-          'accent_secondary' => '#9ca3af'
-        ),
-        'green' => array(
-          'background' => '#059669',
-          'gradient_start' => '#10b981',
-          'gradient_end' => '#059669',
-          'text_primary' => '#ffffff',
-          'text_secondary' => '#ecfdf5',
-          'accent' => '#34d399',
-          'accent_secondary' => '#6ee7b7'
-        )
-      );
     }
 
     private function ensureUploadDirectory()
@@ -125,43 +76,42 @@ if (!class_exists('OG_SVG_Generator')) {
     {
       // Get data for SVG
       $data = $this->getSVGData($post_id);
-      $colors = $this->getColorScheme();
 
       // Validate required data
       if (empty($data['site_title']) && empty($data['page_title'])) {
         throw new Exception('No title data available for SVG generation');
       }
 
-      // Start building SVG
-      $svg = '<?xml version="1.0" encoding="UTF-8"?>' . "\n";
-      $svg .= '<svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">' . "\n";
+      // Get selected theme
+      $theme_id = $this->settings['color_scheme'] ?? 'gabriel';
 
-      // Add definitions
-      $svg .= $this->generateSVGDefs($colors);
+      try {
+        $theme = $this->theme_manager->getTheme($theme_id, $this->settings, $data);
+        return $theme->generateSVG();
+      } catch (Exception $e) {
+        error_log('Theme generation failed: ' . $e->getMessage());
 
-      // Background
-      $svg .= '<rect width="1200" height="630" fill="url(#bgGradient)"/>' . "\n";
-
-      // Decorative elements
-      $svg .= $this->generateDecorativeElements($colors);
-
-      // Content container
-      $svg .= '<rect x="60" y="60" width="1080" height="510" rx="20" fill="rgba(255,255,255,0.08)" stroke="rgba(255,255,255,0.2)" stroke-width="1"/>' . "\n";
-
-      // Avatar section
-      if (!empty($data['avatar_url'])) {
-        $svg .= $this->generateAvatarSection($data['avatar_url']);
+        // Fallback to gabriel theme
+        if ($theme_id !== 'gabriel') {
+          try {
+            $theme = $this->theme_manager->getTheme('gabriel', $this->settings, $data);
+            return $theme->generateSVG();
+          } catch (Exception $fallback_e) {
+            error_log('Fallback theme also failed: ' . $fallback_e->getMessage());
+            throw new Exception('All themes failed to generate SVG');
+          }
+        } else {
+          throw $e;
+        }
       }
+    }
 
-      // Text content
-      $svg .= $this->generateTextContent($data, $colors);
-
-      // Footer elements
-      $svg .= $this->generateFooterElements($data, $colors);
-
-      $svg .= '</svg>';
-
-      return $svg;
+    /**
+     * Get available themes for admin interface
+     */
+    public function getAvailableThemes()
+    {
+      return $this->theme_manager->getAvailableThemes();
     }
 
     private function generateSVGDefs($colors)

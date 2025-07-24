@@ -164,53 +164,36 @@ if (!class_exists('OG_SVG_Admin_Settings')) {
     public function colorSchemeFieldCallback()
     {
       $value = isset($this->settings['color_scheme']) ? $this->settings['color_scheme'] : 'gabriel';
-      $schemes = array(
-        'gabriel' => array(
-          'name' => 'Gabriel Kanev',
-          'description' => 'Professional tech theme with dark gradients',
-          'colors' => array('#0f172a', '#3b82f6', '#06b6d4')
-        ),
-        'blue' => array(
-          'name' => 'Professional Blue',
-          'description' => 'Clean blue gradient for business',
-          'colors' => array('#1e40af', '#3b82f6', '#60a5fa')
-        ),
-        'purple' => array(
-          'name' => 'Creative Purple',
-          'description' => 'Vibrant purple for creative industries',
-          'colors' => array('#7c3aed', '#a855f7', '#c084fc')
-        ),
-        'dark' => array(
-          'name' => 'Modern Dark',
-          'description' => 'Sleek dark theme for modern brands',
-          'colors' => array('#111827', '#374151', '#6b7280')
-        ),
-        'green' => array(
-          'name' => 'Fresh Green',
-          'description' => 'Natural green for eco-friendly brands',
-          'colors' => array('#059669', '#10b981', '#34d399')
-        )
-      );
+
+      // Get available themes from generator
+      $generator = new OG_SVG_Generator();
+      $themes = $generator->getAvailableThemes();
 
       echo '<div class="og-svg-color-schemes">';
-      foreach ($schemes as $key => $scheme) {
-        $checked = checked($value, $key, false);
+      foreach ($themes as $theme_id => $theme_info) {
+        $checked = checked($value, $theme_id, false);
         echo '<div class="og-svg-color-option">';
-        echo '<input type="radio" id="color_scheme_' . $key . '" name="og_svg_settings[color_scheme]" value="' . esc_attr($key) . '" ' . $checked . ' />';
-        echo '<label for="color_scheme_' . $key . '" class="og-svg-color-label">';
+        echo '<input type="radio" id="color_scheme_' . $theme_id . '" name="og_svg_settings[color_scheme]" value="' . esc_attr($theme_id) . '" ' . $checked . ' />';
+        echo '<label for="color_scheme_' . $theme_id . '" class="og-svg-color-label">';
         echo '<div class="og-svg-color-preview">';
-        foreach ($scheme['colors'] as $color) {
-          echo '<span class="og-svg-color-swatch" style="background-color: ' . $color . '"></span>';
+        if (isset($theme_info['preview_colors'])) {
+          foreach ($theme_info['preview_colors'] as $color) {
+            echo '<span class="og-svg-color-swatch" style="background-color: ' . esc_attr($color) . '"></span>';
+          }
         }
         echo '</div>';
         echo '<div class="og-svg-color-info">';
-        echo '<strong>' . esc_html($scheme['name']) . '</strong>';
-        echo '<span>' . esc_html($scheme['description']) . '</span>';
+        echo '<strong>' . esc_html($theme_info['name']) . '</strong>';
+        echo '<span>' . esc_html($theme_info['description']) . '</span>';
+        if (isset($theme_info['author']) && $theme_info['author'] !== 'OpenGraph SVG Generator') {
+          echo '<small>by ' . esc_html($theme_info['author']) . '</small>';
+        }
         echo '</div>';
         echo '</label>';
         echo '</div>';
       }
       echo '</div>';
+      echo '<p class="og-svg-field-description">Choose a theme for your OpenGraph images. Each theme has its own unique style and design elements.</p>';
     }
 
     public function displayOptionsFieldCallback()
@@ -736,6 +719,18 @@ if (!class_exists('OG_SVG_Admin_Settings')) {
                     <p>SVG images are lightweight and cached for fast loading.</p>
                   </div>
                 </div>
+              </div>
+            </div>
+
+            <div class="og-svg-sidebar-card">
+              <h3><span class="dashicons dashicons-share"></span> Social Platforms</h3>
+              <div class="og-svg-social-platforms">
+                <span class="og-svg-platform">Facebook</span>
+                <span class="og-svg-platform">Twitter</span>
+                <span class="og-svg-platform">LinkedIn</span>
+                <span class="og-svg-platform">Discord</span>
+                <span class="og-svg-platform">Slack</span>
+                <span class="og-svg-platform">WhatsApp</span>
               </div>
             </div>
           </div>
