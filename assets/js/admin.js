@@ -10,6 +10,7 @@ jQuery(document).ready(function($) {
     initColorSchemePreview();
     initPreviewGeneration();
     initImageCleanup();
+    initBulkGeneration();
     initTroubleshooting();
     initFormValidation();
     initTooltips();
@@ -204,8 +205,107 @@ jQuery(document).ready(function($) {
     }
   
     /**
-     * Troubleshooting tools
+     * Bulk image generation
      */
+    function initBulkGeneration() {
+      $('#bulk_generate_button').on('click', function(e) {
+        e.preventDefault();
+        
+        // Confirm action
+        var forceRegenerate = $('#force_regenerate').is(':checked');
+        var confirmMessage = forceRegenerate 
+          ? 'This will regenerate ALL OpenGraph images. This may take several minutes. Continue?'
+          : 'This will generate OpenGraph images for all posts that don\'t have them yet. Continue?';
+        
+        if (!confirm(confirmMessage)) {
+          return;
+        }
+        
+        startBulkGeneration(forceRegenerate);
+      });
+    }
+  
+    function startBulkGeneration(forceRegenerate) {
+      var $button = $('#bulk_generate_button');
+      var $progress = $('#bulk_progress');
+      var $progressFill = $('.og-svg-progress-fill');
+      var $progressText = $('.og-svg-progress-text');
+      
+      // Disable button and show progress
+      $button.prop('disabled', true).html('<span class="dashicons dashicons-update og-svg-spinning"></span> Generating...');
+      $progress.show();
+      
+      // Start the bulk generation process
+      processBatch(0, forceRegenerate, function(success, data) {
+        // Reset UI
+        $button.prop('disabled', false).html('<span class="dashicons dashicons-images-alt2"></span> Generate All Images');
+        
+        if (success) {
+          $progressFill.css('width', '100%');
+          $progressText.text('✓ All images generated successfully!');
+          showNotice(data.message, 'success');
+          
+          // Hide progress after 3 seconds
+          setTimeout(function() {
+            $progress.fadeOut();
+          }, 3000);
+          
+          // Update stats
+          updateStats();
+        } else {
+          $progressText.text('✗ Generation failed');
+          showNotice('Error: ' + data.message, 'error');
+          
+          setTimeout(function() {
+            $progress.fadeOut();
+          }, 5000);
+        }
+      });
+    }
+  
+    function processBatch(offset, forceRegenerate, callback) {
+      $.ajax({
+        url: og_svg_admin.ajax_url,
+        type: 'POST',
+        data: {
+          action: 'og_svg_bulk_generate',
+          nonce: og_svg_admin.nonce,
+          offset: offset,
+          force: forceRegenerate ? '1' : '0'
+        },
+        success: function(response) {
+          if (response.success) {
+            var data = response.data;
+            
+            if (data.completed) {
+              // All done
+              callback(true, data);
+            } else {
+              // Update progress
+              var percentage = Math.round((data.processed / data.total) * 100);
+              $('.og-svg-progress-fill').css('width', percentage + '%');
+              $('.og-svg-progress-text').text(data.message);
+              
+              // Log any errors
+              if (data.errors && data.errors.length > 0) {
+                console.warn('OG SVG Generation Errors:', data.errors);
+              }
+              
+              // Continue with next batch
+              setTimeout(function() {
+                processBatch(data.next_offset, forceRegenerate, callback);
+              }, 500); // Small delay to prevent overwhelming the server
+            }
+          } else {
+            callback(false, response.data);
+          }
+        },
+        error: function(xhr, status, error) {
+          console.error('Bulk generation request failed:', error);
+          callback(false, { message: 'Request failed: ' + error });
+        }
+      });
+    }
     function initTroubleshooting() {
       // Flush rewrite rules
       $('#flush_rewrite_button').on('click', function(e) {

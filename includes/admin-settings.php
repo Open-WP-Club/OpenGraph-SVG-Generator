@@ -25,6 +25,7 @@ if (!class_exists('OG_SVG_Admin_Settings')) {
       add_action('wp_ajax_og_svg_cleanup_images', array($this, 'ajaxCleanupImages'));
       add_action('wp_ajax_og_svg_flush_rewrite', array($this, 'ajaxFlushRewrite'));
       add_action('wp_ajax_og_svg_test_url', array($this, 'ajaxTestUrl'));
+      add_action('wp_ajax_og_svg_bulk_generate', array($this, 'ajaxBulkGenerate'));
 
       $this->settings = get_option('og_svg_settings', array());
     }
@@ -150,7 +151,7 @@ if (!class_exists('OG_SVG_Admin_Settings')) {
     public function avatarUrlFieldCallback()
     {
       $value = isset($this->settings['avatar_url']) ? $this->settings['avatar_url'] : '';
-
+      
       echo '<div class="og-svg-avatar-field">';
       echo '<div class="og-svg-input-group">';
       echo '<input type="url" id="avatar_url" name="og_svg_settings[avatar_url]" value="' . esc_attr($value) . '" class="og-svg-field-input" placeholder="https://example.com/avatar.jpg" />';
@@ -224,7 +225,7 @@ if (!class_exists('OG_SVG_Admin_Settings')) {
     public function displayOptionsFieldCallback()
     {
       $show_tagline = isset($this->settings['show_tagline']) ? $this->settings['show_tagline'] : true;
-
+      
       echo '<div class="og-svg-checkbox-group">';
       echo '<label class="og-svg-checkbox-item">';
       echo '<input type="checkbox" name="og_svg_settings[show_tagline]" value="1" ' . checked(1, $show_tagline, false) . ' />';
@@ -309,7 +310,7 @@ if (!class_exists('OG_SVG_Admin_Settings')) {
       try {
         $generator = new OG_SVG_Generator();
         $preview_url = $generator->getSVGUrl();
-
+        
         wp_send_json_success(array(
           'image_url' => $preview_url,
           'message' => 'Preview generated successfully!'
@@ -317,6 +318,94 @@ if (!class_exists('OG_SVG_Admin_Settings')) {
       } catch (Exception $e) {
         wp_send_json_error(array(
           'message' => 'Failed to generate preview: ' . $e->getMessage()
+    public function ajaxBulkGenerate()
+    {
+      // Verify nonce
+      if (!wp_verify_nonce($_POST['nonce'], 'og_svg_admin_nonce')) {
+        wp_die('Security check failed');
+      }
+
+      if (!current_user_can('manage_options')) {
+        wp_die('Insufficient permissions');
+      }
+
+      try {
+        $settings = get_option('og_svg_settings', array());
+        $enabled_types = $settings['enabled_post_types'] ?? array('post', 'page');
+        $force_regenerate = isset($_POST['force']) && $_POST['force'];
+        $batch_size = 5; // Process 5 posts at a time
+        $offset = intval($_POST['offset'] ?? 0);
+
+        // Get posts to process
+        $query_args = array(
+          'post_type' => $enabled_types,
+          'post_status' => 'publish',
+          'posts_per_page' => $batch_size,
+          'offset' => $offset,
+          'fields' => 'ids'
+        );
+
+        $posts = get_posts($query_args);
+        
+        if (empty($posts)) {
+          // No more posts, we're done
+          wp_send_json_success(array(
+            'completed' => true,
+            'message' => 'All images generated successfully!',
+            'processed' => $offset
+          ));
+          return;
+        }
+
+        $generator = new OG_SVG_Generator();
+        $generated = 0;
+        $skipped = 0;
+        $errors = array();
+
+        foreach ($posts as $post_id) {
+          try {
+            $file_path = $generator->getSVGFilePath($post_id);
+            
+            if (!$force_regenerate && file_exists($file_path)) {
+              $skipped++;
+            } else {
+              $svg_content = $generator->generateSVG($post_id);
+              file_put_contents($file_path, $svg_content);
+              
+              // Also trigger media library save
+              $generator->saveSVGToMedia($svg_content, $post_id);
+              
+              $generated++;
+            }
+          } catch (Exception $e) {
+            $errors[] = "Post {$post_id}: " . $e->getMessage();
+          }
+        }
+
+        // Get total count for progress
+        $total_query = array(
+          'post_type' => $enabled_types,
+          'post_status' => 'publish',
+          'posts_per_page' => -1,
+          'fields' => 'ids'
+        );
+        $total_posts = count(get_posts($total_query));
+
+        wp_send_json_success(array(
+          'completed' => false,
+          'processed' => $offset + count($posts),
+          'total' => $total_posts,
+          'generated' => $generated,
+          'skipped' => $skipped,
+          'errors' => $errors,
+          'next_offset' => $offset + $batch_size,
+          'message' => sprintf('Processed %d/%d posts. Generated: %d, Skipped: %d', 
+                              $offset + count($posts), $total_posts, $generated, $skipped)
+        ));
+
+      } catch (Exception $e) {
+        wp_send_json_error(array(
+          'message' => 'Bulk generation failed: ' . $e->getMessage()
         ));
       }
     }
@@ -335,7 +424,7 @@ if (!class_exists('OG_SVG_Admin_Settings')) {
       try {
         // Force flush rewrite rules
         flush_rewrite_rules(true);
-
+        
         wp_send_json_success(array(
           'message' => 'Rewrite rules flushed successfully! Please test the URLs again.'
         ));
@@ -359,20 +448,20 @@ if (!class_exists('OG_SVG_Admin_Settings')) {
 
       try {
         $test_url = get_site_url() . '/og-svg/home/';
-
+        
         // Test the URL
         $response = wp_safe_remote_head($test_url, array(
           'timeout' => 10,
           'sslverify' => false
         ));
-
+        
         if (is_wp_error($response)) {
           throw new Exception('URL test failed: ' . $response->get_error_message());
         }
-
+        
         $response_code = wp_remote_retrieve_response_code($response);
         $content_type = wp_remote_retrieve_header($response, 'content-type');
-
+        
         if ($response_code === 200) {
           wp_send_json_success(array(
             'message' => 'URL is working correctly!',
@@ -391,6 +480,7 @@ if (!class_exists('OG_SVG_Admin_Settings')) {
             )
           ));
         }
+        
       } catch (Exception $e) {
         wp_send_json_error(array(
           'message' => 'URL test failed: ' . $e->getMessage()
@@ -434,7 +524,7 @@ if (!class_exists('OG_SVG_Admin_Settings')) {
                 settings_fields('og_svg_settings_group');
                 do_settings_sections('og-svg-settings');
                 ?>
-
+                
                 <div class="og-svg-form-actions">
                   <?php submit_button('Save Settings', 'primary', 'submit', false, array('class' => 'button-primary og-svg-button-primary')); ?>
                   <button type="button" class="button og-svg-button-secondary" id="generate_preview_button">
@@ -468,16 +558,35 @@ if (!class_exists('OG_SVG_Admin_Settings')) {
             <div class="og-svg-sidebar-card">
               <h3><span class="dashicons dashicons-admin-tools"></span> Tools</h3>
               <div class="og-svg-tools">
+                <button type="button" class="button button-primary og-svg-full-width" id="bulk_generate_button">
+                  <span class="dashicons dashicons-images-alt2"></span> Generate All Images
+                </button>
+                <p class="og-svg-tool-description">Generate OpenGraph images for all published posts and pages.</p>
+                
+                <div class="og-svg-bulk-options" style="margin: 15px 0;">
+                  <label>
+                    <input type="checkbox" id="force_regenerate" />
+                    <span>Force regenerate existing images</span>
+                  </label>
+                </div>
+                
+                <div id="bulk_progress" class="og-svg-progress-container" style="display: none;">
+                  <div class="og-svg-progress-bar">
+                    <div class="og-svg-progress-fill" style="width: 0%"></div>
+                  </div>
+                  <div class="og-svg-progress-text">Preparing...</div>
+                </div>
+                
                 <button type="button" class="button button-secondary og-svg-full-width" id="cleanup_images_button">
                   <span class="dashicons dashicons-trash"></span> Remove All Generated Images
                 </button>
                 <p class="og-svg-tool-description">This will remove all generated SVG files from your server and media library.</p>
-
+                
                 <button type="button" class="button button-secondary og-svg-full-width" id="flush_rewrite_button">
                   <span class="dashicons dashicons-update"></span> Fix URL Issues
                 </button>
                 <p class="og-svg-tool-description">If OpenGraph URLs are not working, this will refresh the URL structure.</p>
-
+                
                 <button type="button" class="button button-secondary og-svg-full-width" id="test_url_button">
                   <span class="dashicons dashicons-admin-links"></span> Test URLs
                 </button>
