@@ -63,7 +63,7 @@ if (!class_exists('OG_SVG_Meta_Handler')) {
       $image_url = $this->getOpenGraphImageUrl();
       $type = $this->getOpenGraphType();
 
-      echo "\n<!-- OpenGraph SVG Generator Meta Tags -->\n";
+      echo "\n<!-- OpenGraph SVG Generator Meta Tags by https:openwpclub.com/ -->\n";
 
       // Basic OpenGraph tags
       $this->outputMetaTag('og:title', $title);
