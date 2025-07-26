@@ -8,7 +8,7 @@ if (!defined('ABSPATH')) {
   exit;
 }
 
-class OG_SVG_Theme_Split_Screen extends OG_SVG_Theme_Base
+class OG_SVG_Theme_SplitScreen extends OG_SVG_Theme_Base
 {
   public function getThemeInfo()
   {

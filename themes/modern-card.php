@@ -8,7 +8,7 @@ if (!defined('ABSPATH')) {
   exit;
 }
 
-class OG_SVG_Theme_Modern_Card extends OG_SVG_Theme_Base
+class OG_SVG_Theme_ModernCard extends OG_SVG_Theme_Base
 {
   public function getThemeInfo()
   {
