@@ -1,93 +1,113 @@
 /**
- * Admin CSS for OpenGraph SVG Generator
- * Modern, clean styling for WordPress admin interface
+ * Simplified Admin CSS for OpenGraph SVG Generator
+ * Clean, modern design with better spacing and typography
  */
 
-/* Main admin wrapper */
-.og-svg-admin-wrap {
+/* Reset and base styles */
+.og-svg-admin {
   margin: 20px 20px 0 2px;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
 
+/* Header */
 .og-svg-header {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
   color: white;
-  padding: 30px;
-  border-radius: 12px;
-  margin-bottom: 30px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
+  padding: 32px;
+  border-radius: 8px;
+  margin-bottom: 24px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
 }
 
 .og-svg-header h1 {
-  margin: 0 0 10px 0;
-  font-size: 28px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  color: white;
-}
-
-.og-svg-header h1 .dashicons {
-  font-size: 32px;
-  width: 32px;
-  height: 32px;
-}
-
-.og-svg-subtitle {
-  margin: 0;
-  font-size: 16px;
-  opacity: 0.9;
-  font-weight: 300;
-}
-
-/* Main layout */
-.og-svg-admin-container {
-  display: grid;
-  grid-template-columns: 2fr 1fr;
-  gap: 30px;
-  align-items: start;
-}
-
-/* Cards */
-.og-svg-settings-card,
-.og-svg-preview-card,
-.og-svg-sidebar-card {
-  background: #fff;
-  border: 1px solid #e0e4e7;
-  border-radius: 12px;
-  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
-  overflow: hidden;
-}
-
-.og-svg-settings-card {
-  margin-bottom: 30px;
-}
-
-.og-svg-preview-card {
-  margin-bottom: 30px;
-}
-
-.og-svg-preview-card h2 {
-  background: #f8f9fa;
-  margin: 0;
-  padding: 20px 30px;
-  border-bottom: 1px solid #e0e4e7;
-  font-size: 18px;
+  margin: 0 0 8px 0;
+  font-size: 24px;
   font-weight: 600;
   display: flex;
   align-items: center;
   gap: 10px;
+  color: white;
 }
 
-.og-svg-sidebar-card {
+.og-svg-header h1 .dashicons {
+  font-size: 26px;
+  width: 26px;
+  height: 26px;
+}
+
+.og-svg-header p {
+  margin: 0;
+  font-size: 14px;
+  opacity: 0.9;
+  font-weight: 400;
+}
+
+/* Custom notices */
+.og-svg-notice {
+  background: #fff;
+  border: 1px solid #c3e6cb;
+  border-left: 4px solid #28a745;
+  border-radius: 4px;
+  padding: 12px 16px;
+  margin-bottom: 20px;
+  position: relative;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.og-svg-notice-success {
+  border-left-color: #28a745;
+  background-color: #f8fff9;
+}
+
+.og-svg-notice p {
+  margin: 0;
+  font-size: 14px;
+}
+
+.og-svg-notice-dismiss {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  background: none;
+  border: none;
+  font-size: 18px;
+  cursor: pointer;
+  color: #666;
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.og-svg-notice-dismiss:hover {
+  color: #333;
+}
+
+/* Layout */
+.og-svg-container {
+  display: grid;
+  grid-template-columns: 2fr 1fr;
+  gap: 24px;
+  align-items: start;
+}
+
+/* Cards */
+.og-svg-card {
+  background: #fff;
+  border: 1px solid #e1e5e9;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
   margin-bottom: 20px;
 }
 
-.og-svg-sidebar-card h3 {
+.og-svg-card h2,
+.og-svg-card h3 {
   background: #f8f9fa;
   margin: 0;
   padding: 16px 20px;
-  border-bottom: 1px solid #e0e4e7;
+  border-bottom: 1px solid #e1e5e9;
   font-size: 16px;
   font-weight: 600;
   display: flex;
@@ -95,277 +115,283 @@
   gap: 8px;
 }
 
-/* Form styling */
-.og-svg-settings-form {
-  padding: 30px;
+/* Form styles */
+.og-svg-form {
+  padding: 24px;
 }
 
-.og-svg-section-intro {
-  background: #f0f6fc;
-  border-left: 4px solid #0073aa;
-  padding: 16px 20px;
-  margin-bottom: 30px;
-  border-radius: 0 8px 8px 0;
-}
-
-.og-svg-section-intro p {
-  margin: 0;
-  color: #0c4a6e;
-  line-height: 1.6;
-}
-
-/* Form table overrides */
-.og-svg-settings-form .form-table {
+.og-svg-form .form-table {
   background: transparent;
   border: none;
   box-shadow: none;
-  padding: 0;
 }
 
-.og-svg-settings-form .form-table th {
+.og-svg-form .form-table th {
   font-weight: 600;
-  color: #1e293b;
-  padding: 20px 20px 20px 0;
+  color: #2c3e50;
+  padding: 16px 16px 16px 0;
   vertical-align: top;
-  width: 200px;
+  width: 160px;
+  font-size: 14px;
 }
 
-.og-svg-settings-form .form-table td {
-  padding: 20px 0;
+.og-svg-form .form-table td {
+  padding: 16px 0;
   vertical-align: top;
 }
 
-/* Avatar field */
-.og-svg-avatar-field {
+/* Field styles */
+.og-svg-field {
   max-width: 500px;
 }
 
 .og-svg-input-group {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
-  margin-bottom: 12px;
+  margin-bottom: 8px;
 }
 
-.og-svg-field-input {
+.og-svg-input {
   flex: 1;
-  padding: 10px 14px;
-  border: 2px solid #e2e8f0;
-  border-radius: 8px;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
   font-size: 14px;
-  transition: all 0.2s ease;
+  transition: border-color 0.2s ease;
   background: #fff;
 }
 
-.og-svg-field-input:focus {
-  border-color: #3b82f6;
-  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+.og-svg-input:focus {
+  border-color: #667eea;
   outline: none;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
 }
 
+.og-svg-description {
+  margin: 4px 0 0 0;
+  color: #666;
+  font-size: 12px;
+  line-height: 1.4;
+}
+
+/* Avatar preview */
 .og-svg-avatar-preview {
   display: inline-block;
   position: relative;
-  margin-top: 15px;
+  margin-top: 10px;
 }
 
 .og-svg-avatar-preview img {
-  width: 80px;
-  height: 80px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
-  border: 3px solid #e2e8f0;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 2px solid #e1e5e9;
   object-fit: cover;
 }
 
 .og-svg-remove-avatar {
   position: absolute;
-  top: -5px;
-  right: -5px;
-  background: #ef4444;
+  top: -4px;
+  right: -4px;
+  background: #dc3545;
   color: white;
   border: none;
   border-radius: 50%;
-  width: 24px;
-  height: 24px;
-  font-size: 12px;
+  width: 18px;
+  height: 18px;
+  font-size: 10px;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
-/* Color schemes */
-.og-svg-color-schemes {
+/* Theme selection */
+.og-svg-themes {
   display: grid;
-  gap: 16px;
+  gap: 12px;
   max-width: 600px;
 }
 
-.og-svg-color-option {
-  border: 2px solid #e2e8f0;
-  border-radius: 12px;
-  padding: 16px;
-  transition: all 0.2s ease;
+.og-svg-theme-option {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
   cursor: pointer;
+  transition: all 0.2s ease;
+  position: relative;
 }
 
-.og-svg-color-option:hover {
-  border-color: #cbd5e1;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+.og-svg-theme-option:hover {
+  border-color: #667eea;
+  background: #f8f9ff;
 }
 
-.og-svg-color-option input[type="radio"] {
+.og-svg-theme-option input[type="radio"] {
   position: absolute;
   opacity: 0;
 }
 
-.og-svg-color-option input[type="radio"]:checked+.og-svg-color-label {
-  background: #f8fafc;
+.og-svg-theme-option input[type="radio"]:checked+.og-svg-theme-preview {
+  /* Visual feedback handled by parent */
 }
 
-.og-svg-color-option input[type="radio"]:checked+.og-svg-color-label::before {
+.og-svg-theme-option:has(input:checked) {
+  border-color: #667eea;
+  background: #f8f9ff;
+  box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.og-svg-theme-option:has(input:checked)::after {
   content: '✓';
   position: absolute;
-  top: 12px;
-  right: 12px;
-  background: #22c55e;
+  top: 8px;
+  right: 8px;
+  background: #28a745;
   color: white;
-  width: 24px;
-  height: 24px;
+  width: 16px;
+  height: 16px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: bold;
 }
 
-.og-svg-color-option:has(input:checked) {
-  border-color: #3b82f6;
-  background: #f8fafc;
-}
-
-.og-svg-color-label {
+.og-svg-theme-preview {
   display: flex;
-  align-items: center;
-  gap: 16px;
-  cursor: pointer;
-  position: relative;
-  padding: 8px;
-  border-radius: 8px;
-  transition: all 0.2s ease;
+  gap: 3px;
 }
 
-.og-svg-color-preview {
-  display: flex;
-  gap: 4px;
+.og-svg-color-dot {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
 }
 
-.og-svg-color-swatch {
-  width: 24px;
-  height: 24px;
-  border-radius: 6px;
-  border: 2px solid rgba(255, 255, 255, 0.8);
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-}
-
-.og-svg-color-info {
+.og-svg-theme-info {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
-.og-svg-color-info strong {
-  font-size: 15px;
-  color: #1e293b;
+.og-svg-theme-info strong {
+  font-size: 14px;
+  color: #2c3e50;
 }
 
-.og-svg-color-info span {
-  font-size: 13px;
-  color: #64748b;
+.og-svg-theme-info span {
+  font-size: 12px;
+  color: #666;
 }
 
-/* Checkbox groups */
+/* Checkbox styles */
 .og-svg-checkbox-group {
   display: flex;
   flex-direction: column;
-  gap: 12px;
-  max-width: 400px;
+  gap: 8px;
 }
 
-.og-svg-checkbox-item {
+.og-svg-checkbox {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 0;
+  gap: 8px;
   cursor: pointer;
+  padding: 4px 0;
 }
 
-.og-svg-checkbox-item input[type="checkbox"] {
-  margin: 0;
-  transform: scale(1.1);
+.og-svg-checkbox input[type="checkbox"] {
+  position: absolute;
+  opacity: 0;
 }
 
-.og-svg-checkbox-item span {
+.og-svg-checkbox-mark {
+  width: 16px;
+  height: 16px;
+  border: 1px solid #ddd;
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  background: #fff;
+}
+
+.og-svg-checkbox input[type="checkbox"]:checked+.og-svg-checkbox-mark {
+  background: #667eea;
+  border-color: #667eea;
+}
+
+.og-svg-checkbox input[type="checkbox"]:checked+.og-svg-checkbox-mark::after {
+  content: '✓';
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+}
+
+.og-svg-checkbox span {
   font-size: 14px;
-  color: #374151;
-}
-
-/* Field descriptions */
-.og-svg-field-description {
-  margin: 8px 0 0 0;
-  color: #6b7280;
-  font-size: 13px;
-  line-height: 1.5;
+  color: #2c3e50;
 }
 
 /* Buttons */
-.og-svg-button-primary {
-  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
-  border: none;
-  color: white;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-weight: 600;
+.og-svg-button {
+  padding: 8px 16px;
+  border-radius: 4px;
   font-size: 14px;
+  font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   text-decoration: none;
-  box-shadow: 0 2px 8px rgba(59, 130, 246, 0.2);
+  border: 1px solid transparent;
+}
+
+.og-svg-button-primary {
+  background: #667eea;
+  color: white;
+  border-color: #667eea;
 }
 
 .og-svg-button-primary:hover {
-  background: linear-gradient(135deg, #2563eb, #1e40af);
-  transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+  background: #5a6fd8;
+  border-color: #5a6fd8;
   color: white;
+  transform: translateY(-1px);
 }
 
 .og-svg-button-secondary {
-  background: #f8fafc;
-  border: 2px solid #e2e8f0;
-  color: #475569;
-  padding: 10px 20px;
-  border-radius: 8px;
-  font-weight: 500;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: inline-flex;
-  align-items: center;
-  gap: 8px;
-  text-decoration: none;
+  background: #6c757d;
+  color: white;
+  border-color: #6c757d;
 }
 
 .og-svg-button-secondary:hover {
-  background: #f1f5f9;
-  border-color: #cbd5e1;
-  color: #334155;
+  background: #5a6268;
+  border-color: #5a6268;
+  color: white;
   transform: translateY(-1px);
+}
+
+.og-svg-button-outline {
+  background: transparent;
+  color: #6c757d;
+  border-color: #ddd;
+}
+
+.og-svg-button-outline:hover {
+  background: #f8f9fa;
+  border-color: #6c757d;
+  color: #495057;
 }
 
 .og-svg-full-width {
@@ -373,201 +399,165 @@
   justify-content: center;
 }
 
-/* Form actions */
-.og-svg-form-actions {
+/* Actions */
+.og-svg-actions {
   display: flex;
-  gap: 12px;
+  gap: 10px;
   align-items: center;
-  margin-top: 30px;
-  padding-top: 20px;
-  border-top: 1px solid #e2e8f0;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #e1e5e9;
 }
 
-/* Preview section */
+/* Preview */
 #preview_container {
-  padding: 30px;
+  padding: 24px;
   text-align: center;
 }
 
 .og-svg-preview-image {
   max-width: 100%;
   height: auto;
-  border: 1px solid #e2e8f0;
-  border-radius: 12px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-  margin-bottom: 20px;
+  border: 1px solid #e1e5e9;
+  border-radius: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-bottom: 16px;
 }
 
-.og-svg-preview-url {
-  background: #1e293b;
-  color: #e2e8f0;
-  padding: 12px 16px;
-  border-radius: 8px;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  font-size: 12px;
-  word-break: break-all;
-  margin-top: 15px;
-}
-
-/* Sidebar content */
-.og-svg-sidebar {
+/* Sidebar */
+.og-svg-tools {
+  padding: 20px;
   display: flex;
   flex-direction: column;
+  gap: 12px;
+}
+
+.og-svg-bulk-option {
+  margin-top: 8px;
+  margin-bottom: 8px;
+}
+
+/* Progress */
+.og-svg-progress {
+  margin: 12px 0;
+}
+
+.og-svg-progress-bar {
+  width: 100%;
+  height: 8px;
+  background: #e9ecef;
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.og-svg-progress-fill {
+  height: 100%;
+  background: #28a745;
+  transition: width 0.3s ease;
+  width: 0%;
+}
+
+.og-svg-progress-text {
+  font-size: 12px;
+  color: #666;
+  margin-top: 6px;
+  text-align: center;
 }
 
 /* Stats */
-.og-svg-stats {
+.og-svg-status {
   padding: 20px;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 20px;
 }
 
 .og-svg-stat {
-  text-align: center;
-  padding: 16px;
-  background: #f8fafc;
-  border-radius: 8px;
-  border: 1px solid #e2e8f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 0;
 }
 
 .og-svg-stat-number {
-  display: block;
-  font-size: 24px;
-  font-weight: 700;
-  color: #3b82f6;
-  line-height: 1;
+  font-size: 18px;
+  font-weight: 600;
+  color: #667eea;
 }
 
 .og-svg-stat-label {
-  display: block;
   font-size: 12px;
-  color: #64748b;
-  margin-top: 4px;
+  color: #666;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
-/* Tools */
-.og-svg-tools {
-  padding: 20px;
+/* Status checks */
+.og-svg-status-checks {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid #e1e5e9;
 }
 
-.og-svg-tool-description {
-  margin: 12px 0 0 0;
-  font-size: 12px;
-  color: #64748b;
-  line-height: 1.4;
-}
-
-/* Help content */
-.og-svg-help-content {
-  padding: 20px;
-}
-
-.og-svg-help-item {
+.og-svg-status-item {
   display: flex;
-  gap: 12px;
-  margin-bottom: 16px;
-  align-items: flex-start;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 0;
+  font-size: 12px;
 }
 
-.og-svg-help-item:last-child {
-  margin-bottom: 0;
+.og-svg-status-badge {
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
 }
 
-.og-svg-help-item .dashicons {
-  color: #22c55e;
-  font-size: 18px;
-  width: 18px;
-  height: 18px;
-  margin-top: 2px;
-  flex-shrink: 0;
+.og-svg-status-ok {
+  background: #d4edda;
+  color: #155724;
 }
 
-.og-svg-help-item strong {
-  display: block;
-  color: #1e293b;
-  font-size: 14px;
-  margin-bottom: 4px;
+.og-svg-status-warning {
+  background: #fff3cd;
+  color: #856404;
 }
 
-.og-svg-help-item p {
-  margin: 0;
-  color: #64748b;
-  font-size: 13px;
-  line-height: 1.4;
+.og-svg-status-error {
+  background: #f8d7da;
+  color: #721c24;
 }
 
 /* Loading states */
 .og-svg-loading {
   opacity: 0.6;
   pointer-events: none;
-  position: relative;
 }
 
-.og-svg-loading::after {
-  content: '';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  width: 20px;
-  height: 20px;
-  margin: -10px 0 0 -10px;
-  border: 2px solid #f3f4f6;
-  border-top: 2px solid #3b82f6;
-  border-radius: 50%;
-  animation: og-svg-spin 1s linear infinite;
-}
-
-@keyframes og-svg-spin {
-  0% {
-    transform: rotate(0deg);
-  }
-
-  100% {
-    transform: rotate(360deg);
-  }
-}
-
-/* Notice enhancements */
-.notice.og-svg-notice {
-  border-left-width: 4px;
-  border-radius: 0 6px 6px 0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-/* Responsive design */
+/* Responsive */
 @media (max-width: 1200px) {
-  .og-svg-admin-container {
-    grid-template-columns: 1fr;
-    gap: 20px;
-  }
-
-  .og-svg-stats {
+  .og-svg-container {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 768px) {
-  .og-svg-admin-wrap {
-    margin: 10px 10px 0 2px;
+  .og-svg-admin {
+    margin: 10px;
   }
 
   .og-svg-header {
     padding: 20px;
-    margin-bottom: 20px;
   }
 
   .og-svg-header h1 {
-    font-size: 24px;
+    font-size: 20px;
   }
 
-  .og-svg-settings-form {
-    padding: 20px;
+  .og-svg-form {
+    padding: 16px;
   }
 
-  .og-svg-form-actions {
+  .og-svg-actions {
     flex-direction: column;
     align-items: stretch;
   }
@@ -577,68 +567,16 @@
     align-items: stretch;
   }
 
-  .og-svg-color-schemes {
-    gap: 12px;
+  .og-svg-themes {
+    gap: 8px;
   }
 
-  .og-svg-color-option {
-    padding: 12px;
-  }
-
-  .og-svg-color-label {
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 12px;
+  .og-svg-theme-option {
+    padding: 8px;
   }
 }
 
-/* Troubleshooting section */
-.og-svg-troubleshooting {
-  padding: 20px;
-}
-
-.og-svg-status-item {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid #f0f0f0;
-}
-
-.og-svg-status-item:last-child {
-  border-bottom: none;
-}
-
-.og-svg-status-label {
-  font-weight: 500;
-  color: #1e293b;
-  font-size: 13px;
-}
-
-.og-svg-status-value {
-  font-size: 12px;
-  font-weight: 600;
-}
-
-.og-svg-status-ok {
-  color: #22c55e;
-}
-
-.og-svg-status-warning {
-  color: #f59e0b;
-}
-
-.og-svg-status-error {
-  color: #ef4444;
-}
-
-.og-svg-test-link {
-  color: #3b82f6;
-  text-decoration: none;
-  font-family: monospace;
-  font-size: 11px;
-}
-
-.og-svg-test-link:hover {
-  text-decoration: underline;
+/* Hide WordPress default notices on our page */
+.settings_page_og-svg-settings .notice:not(.og-svg-notice) {
+  display: none !important;
 }

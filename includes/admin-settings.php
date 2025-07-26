@@ -15,6 +15,7 @@ if (!class_exists('OG_SVG_Admin_Settings')) {
   {
 
     private $settings;
+    private $settings_updated = false;
 
     public function __construct()
     {
@@ -27,7 +28,28 @@ if (!class_exists('OG_SVG_Admin_Settings')) {
       add_action('wp_ajax_og_svg_test_url', array($this, 'ajaxTestUrl'));
       add_action('wp_ajax_og_svg_bulk_generate', array($this, 'ajaxBulkGenerate'));
 
+      // Suppress default WordPress settings messages
+      add_action('admin_notices', array($this, 'suppressDefaultNotices'), 1);
+
       $this->settings = get_option('og_svg_settings', array());
+    }
+
+    public function suppressDefaultNotices()
+    {
+      // Remove the default "Settings saved." message on our settings page
+      if (isset($_GET['page']) && $_GET['page'] === 'og-svg-settings' && isset($_GET['settings-updated'])) {
+        // Mark that settings were updated so we can show our custom message
+        $this->settings_updated = true;
+
+        // Remove the settings-updated parameter to prevent WordPress from showing its message
+        add_action('admin_head', function () {
+          echo '<script type="text/javascript">
+            if (window.history.replaceState) {
+              window.history.replaceState(null, null, window.location.href.split("&settings-updated=true")[0]);
+            }
+          </script>';
+        });
+      }
     }
 
     public function addAdminMenu()
@@ -67,6 +89,7 @@ if (!class_exists('OG_SVG_Admin_Settings')) {
       wp_localize_script('og-svg-admin', 'og_svg_admin', array(
         'ajax_url' => admin_url('admin-ajax.php'),
         'nonce' => wp_create_nonce('og_svg_admin_nonce'),
+        'settings_updated' => $this->settings_updated,
         'messages' => array(
           'generating' => __('Generating preview...', 'og-svg-generator'),
           'cleaning' => __('Removing images...', 'og-svg-generator'),
@@ -86,7 +109,7 @@ if (!class_exists('OG_SVG_Admin_Settings')) {
 
       add_settings_section(
         'og_svg_general_section',
-        'General Settings',
+        '',
         array($this, 'generalSectionCallback'),
         'og-svg-settings'
       );
@@ -101,7 +124,7 @@ if (!class_exists('OG_SVG_Admin_Settings')) {
 
       add_settings_field(
         'color_scheme',
-        'Color Scheme',
+        'Theme',
         array($this, 'colorSchemeFieldCallback'),
         'og-svg-settings',
         'og_svg_general_section'
@@ -134,28 +157,26 @@ if (!class_exists('OG_SVG_Admin_Settings')) {
 
     public function generalSectionCallback()
     {
-      echo '<div class="og-svg-section-intro">';
-      echo '<p>Configure your OpenGraph SVG image generation settings. These images will be automatically generated when your content is shared on social media platforms.</p>';
-      echo '</div>';
+      // Simplified - no intro text needed
     }
 
     public function avatarUrlFieldCallback()
     {
       $value = isset($this->settings['avatar_url']) ? $this->settings['avatar_url'] : '';
 
-      echo '<div class="og-svg-avatar-field">';
+      echo '<div class="og-svg-field">';
       echo '<div class="og-svg-input-group">';
-      echo '<input type="url" id="avatar_url" name="og_svg_settings[avatar_url]" value="' . esc_attr($value) . '" class="og-svg-field-input" placeholder="https://example.com/avatar.jpg" />';
-      echo '<button type="button" class="button og-svg-button-secondary" id="upload_avatar_button">';
-      echo '<span class="dashicons dashicons-upload"></span> Upload Image';
+      echo '<input type="url" id="avatar_url" name="og_svg_settings[avatar_url]" value="' . esc_attr($value) . '" class="og-svg-input" placeholder="https://example.com/avatar.jpg" />';
+      echo '<button type="button" class="og-svg-button-secondary" id="upload_avatar_button">';
+      echo '<span class="dashicons dashicons-upload"></span> Upload';
       echo '</button>';
       echo '</div>';
-      echo '<p class="og-svg-field-description">Upload or enter the URL of your avatar image. Recommended size: 200×200px or larger.</p>';
+      echo '<p class="og-svg-description">Your profile image for OpenGraph cards (200×200px recommended)</p>';
 
       if ($value) {
         echo '<div class="og-svg-avatar-preview">';
         echo '<img src="' . esc_url($value) . '" alt="Avatar Preview" />';
-        echo '<button type="button" class="button-link og-svg-remove-avatar" data-target="avatar_url">Remove</button>';
+        echo '<button type="button" class="og-svg-remove-avatar" data-target="avatar_url">×</button>';
         echo '</div>';
       }
       echo '</div>';
@@ -169,53 +190,47 @@ if (!class_exists('OG_SVG_Admin_Settings')) {
       $generator = new OG_SVG_Generator();
       $themes = $generator->getAvailableThemes();
 
-      echo '<div class="og-svg-color-schemes">';
+      echo '<div class="og-svg-themes">';
       foreach ($themes as $theme_id => $theme_info) {
         $checked = checked($value, $theme_id, false);
-        echo '<div class="og-svg-color-option">';
-        echo '<input type="radio" id="color_scheme_' . $theme_id . '" name="og_svg_settings[color_scheme]" value="' . esc_attr($theme_id) . '" ' . $checked . ' />';
-        echo '<label for="color_scheme_' . $theme_id . '" class="og-svg-color-label">';
-        echo '<div class="og-svg-color-preview">';
+        echo '<label class="og-svg-theme-option">';
+        echo '<input type="radio" name="og_svg_settings[color_scheme]" value="' . esc_attr($theme_id) . '" ' . $checked . ' />';
+        echo '<div class="og-svg-theme-preview">';
         if (isset($theme_info['preview_colors'])) {
           foreach ($theme_info['preview_colors'] as $color) {
-            echo '<span class="og-svg-color-swatch" style="background-color: ' . esc_attr($color) . '"></span>';
+            echo '<div class="og-svg-color-dot" style="background-color: ' . esc_attr($color) . '"></div>';
           }
         }
         echo '</div>';
-        echo '<div class="og-svg-color-info">';
+        echo '<div class="og-svg-theme-info">';
         echo '<strong>' . esc_html($theme_info['name']) . '</strong>';
         echo '<span>' . esc_html($theme_info['description']) . '</span>';
-        if (isset($theme_info['author']) && $theme_info['author'] !== 'OpenGraph SVG Generator') {
-          echo '<small>by ' . esc_html($theme_info['author']) . '</small>';
-        }
         echo '</div>';
         echo '</label>';
-        echo '</div>';
       }
       echo '</div>';
-      echo '<p class="og-svg-field-description">Choose a theme for your OpenGraph images. Each theme has its own unique style and design elements.</p>';
     }
 
     public function displayOptionsFieldCallback()
     {
       $show_tagline = isset($this->settings['show_tagline']) ? $this->settings['show_tagline'] : true;
 
-      echo '<div class="og-svg-checkbox-group">';
-      echo '<label class="og-svg-checkbox-item">';
+      echo '<div class="og-svg-field">';
+      echo '<label class="og-svg-checkbox">';
       echo '<input type="checkbox" name="og_svg_settings[show_tagline]" value="1" ' . checked(1, $show_tagline, false) . ' />';
-      echo '<span>Display site tagline in OpenGraph images</span>';
+      echo '<span class="og-svg-checkbox-mark"></span>';
+      echo '<span>Show site tagline in OpenGraph images</span>';
       echo '</label>';
       echo '</div>';
-      echo '<p class="og-svg-field-description">When enabled, your site\'s tagline will appear below the main title in generated images.</p>';
     }
 
     public function fallbackTitleFieldCallback()
     {
       $value = isset($this->settings['fallback_title']) ? $this->settings['fallback_title'] : 'Welcome';
-      echo '<div class="og-svg-input-group">';
-      echo '<input type="text" id="fallback_title" name="og_svg_settings[fallback_title]" value="' . esc_attr($value) . '" class="og-svg-field-input" placeholder="Welcome" />';
+      echo '<div class="og-svg-field">';
+      echo '<input type="text" id="fallback_title" name="og_svg_settings[fallback_title]" value="' . esc_attr($value) . '" class="og-svg-input" placeholder="Welcome" />';
+      echo '<p class="og-svg-description">Default title for pages without specific titles (like homepage)</p>';
       echo '</div>';
-      echo '<p class="og-svg-field-description">This title will be used for pages without a specific title, such as your homepage.</p>';
     }
 
     public function enabledPostTypesFieldCallback()
@@ -223,16 +238,19 @@ if (!class_exists('OG_SVG_Admin_Settings')) {
       $value = isset($this->settings['enabled_post_types']) ? $this->settings['enabled_post_types'] : array('post', 'page');
       $post_types = get_post_types(array('public' => true), 'objects');
 
+      echo '<div class="og-svg-field">';
       echo '<div class="og-svg-checkbox-group">';
       foreach ($post_types as $post_type) {
         $checked = in_array($post_type->name, $value) ? 'checked="checked"' : '';
-        echo '<label class="og-svg-checkbox-item">';
+        echo '<label class="og-svg-checkbox">';
         echo '<input type="checkbox" name="og_svg_settings[enabled_post_types][]" value="' . esc_attr($post_type->name) . '" ' . $checked . ' />';
+        echo '<span class="og-svg-checkbox-mark"></span>';
         echo '<span>' . esc_html($post_type->label) . '</span>';
         echo '</label>';
       }
       echo '</div>';
-      echo '<p class="og-svg-field-description">Select which post types should have OpenGraph SVG images automatically generated.</p>';
+      echo '<p class="og-svg-description">Select post types for automatic OpenGraph image generation</p>';
+      echo '</div>';
     }
 
     public function sanitizeSettings($input)
@@ -278,6 +296,7 @@ if (!class_exists('OG_SVG_Admin_Settings')) {
       return $sanitized;
     }
 
+    // ... (keeping all the AJAX methods unchanged)
     public function ajaxGeneratePreview()
     {
       if (!wp_verify_nonce($_POST['nonce'], 'og_svg_admin_nonce')) {
@@ -624,150 +643,108 @@ if (!class_exists('OG_SVG_Admin_Settings')) {
       }
 
 ?>
-      <div class="wrap og-svg-admin-wrap">
+      <div class="og-svg-admin">
         <div class="og-svg-header">
           <h1><span class="dashicons dashicons-share"></span> OpenGraph SVG Generator</h1>
-          <p class="og-svg-subtitle">Create beautiful, branded social media preview images automatically</p>
+          <p>Create beautiful, branded social media preview images automatically</p>
         </div>
 
-        <?php if (isset($_GET['settings-updated'])): ?>
-          <div class="notice notice-success is-dismissible">
+        <?php
+        // Show custom success message only
+        if ($this->settings_updated):
+        ?>
+          <div class="og-svg-notice og-svg-notice-success">
             <p><strong>Settings saved successfully!</strong> Your OpenGraph images will now use the updated configuration.</p>
+            <button type="button" class="og-svg-notice-dismiss">×</button>
           </div>
         <?php endif; ?>
 
-        <?php
-        // Show any settings errors
-        settings_errors('og_svg_settings');
-        ?>
+        <?php settings_errors('og_svg_settings'); ?>
 
-        <div class="og-svg-admin-container">
-          <div class="og-svg-main-content">
-            <div class="og-svg-settings-card">
-              <form method="post" action="options.php" class="og-svg-settings-form">
+        <div class="og-svg-container">
+          <div class="og-svg-main">
+            <div class="og-svg-card">
+              <form method="post" action="options.php" class="og-svg-form">
                 <?php
                 settings_fields('og_svg_settings_group');
                 do_settings_sections('og-svg-settings');
                 ?>
 
-                <div class="og-svg-form-actions">
-                  <?php submit_button('Save Settings', 'primary', 'submit', false, array('class' => 'button-primary og-svg-button-primary')); ?>
-                  <button type="button" class="button og-svg-button-secondary" id="generate_preview_button">
-                    <span class="dashicons dashicons-visibility"></span> Generate Preview
+                <div class="og-svg-actions">
+                  <?php submit_button('Save Settings', 'primary', 'submit', false, array('class' => 'og-svg-button og-svg-button-primary')); ?>
+                  <button type="button" class="og-svg-button og-svg-button-secondary" id="generate_preview_button">
+                    <span class="dashicons dashicons-visibility"></span> Preview
                   </button>
                 </div>
               </form>
             </div>
 
-            <div class="og-svg-preview-card" id="preview_section" style="display: none;">
+            <div class="og-svg-card" id="preview_section" style="display: none;">
               <h2><span class="dashicons dashicons-format-image"></span> Preview</h2>
               <div id="preview_container"></div>
             </div>
           </div>
 
           <div class="og-svg-sidebar">
-            <div class="og-svg-sidebar-card">
-              <h3><span class="dashicons dashicons-info"></span> Quick Stats</h3>
-              <div class="og-svg-stats">
-                <div class="og-svg-stat">
-                  <span class="og-svg-stat-number"><?php echo number_format($estimated_images); ?></span>
-                  <span class="og-svg-stat-label">Estimated Images</span>
-                </div>
-                <div class="og-svg-stat">
-                  <span class="og-svg-stat-number"><?php echo count($enabled_types); ?></span>
-                  <span class="og-svg-stat-label">Enabled Post Types</span>
-                </div>
-              </div>
-            </div>
-
-            <div class="og-svg-sidebar-card">
+            <div class="og-svg-card">
               <h3><span class="dashicons dashicons-admin-tools"></span> Tools</h3>
               <div class="og-svg-tools">
-                <button type="button" class="button button-primary og-svg-full-width" id="bulk_generate_button">
+                <button type="button" class="og-svg-button og-svg-button-primary og-svg-full-width" id="bulk_generate_button">
                   <span class="dashicons dashicons-images-alt2"></span> Generate All Images
                 </button>
-                <p class="og-svg-tool-description">Generate OpenGraph images for all published posts and pages.</p>
 
-                <div class="og-svg-bulk-options" style="margin: 15px 0;">
-                  <label>
-                    <input type="checkbox" id="force_regenerate" />
-                    <span>Force regenerate existing images</span>
-                  </label>
-                </div>
+                <label class="og-svg-checkbox og-svg-bulk-option">
+                  <input type="checkbox" id="force_regenerate" />
+                  <span class="og-svg-checkbox-mark"></span>
+                  <span>Regenerate existing images</span>
+                </label>
 
-                <div id="bulk_progress" class="og-svg-progress-container" style="display: none;">
+                <div id="bulk_progress" class="og-svg-progress" style="display: none;">
                   <div class="og-svg-progress-bar">
-                    <div class="og-svg-progress-fill" style="width: 0%"></div>
+                    <div class="og-svg-progress-fill"></div>
                   </div>
                   <div class="og-svg-progress-text">Preparing...</div>
                 </div>
 
-                <button type="button" class="button button-secondary og-svg-full-width" id="cleanup_images_button">
-                  <span class="dashicons dashicons-trash"></span> Remove All Generated Images
+                <button type="button" class="og-svg-button og-svg-button-outline og-svg-full-width" id="cleanup_images_button">
+                  <span class="dashicons dashicons-trash"></span> Remove All Images
                 </button>
-                <p class="og-svg-tool-description">This will remove all generated SVG files from your server and media library.</p>
 
-                <button type="button" class="button button-secondary og-svg-full-width" id="flush_rewrite_button">
+                <button type="button" class="og-svg-button og-svg-button-outline og-svg-full-width" id="flush_rewrite_button">
                   <span class="dashicons dashicons-update"></span> Fix URL Issues
                 </button>
-                <p class="og-svg-tool-description">If OpenGraph URLs are not working, this will refresh the URL structure.</p>
 
-                <button type="button" class="button button-secondary og-svg-full-width" id="test_url_button">
+                <button type="button" class="og-svg-button og-svg-button-outline og-svg-full-width" id="test_url_button">
                   <span class="dashicons dashicons-admin-links"></span> Test URLs
                 </button>
-                <p class="og-svg-tool-description">Test if the OpenGraph URLs are working correctly.</p>
               </div>
             </div>
 
-            <div class="og-svg-sidebar-card">
-              <h3><span class="dashicons dashicons-info"></span> Troubleshooting</h3>
-              <div class="og-svg-troubleshooting">
-                <div class="og-svg-status-item">
-                  <span class="og-svg-status-label">Upload Directory:</span>
-                  <span class="og-svg-status-value <?php echo is_writable(wp_upload_dir()['basedir']) ? 'og-svg-status-ok' : 'og-svg-status-error'; ?>">
-                    <?php echo is_writable(wp_upload_dir()['basedir']) ? 'Writable' : 'Not Writable'; ?>
-                  </span>
+            <div class="og-svg-card">
+              <h3><span class="dashicons dashicons-info"></span> Status</h3>
+              <div class="og-svg-status">
+                <div class="og-svg-stat">
+                  <span class="og-svg-stat-number"><?php echo number_format($estimated_images); ?></span>
+                  <span class="og-svg-stat-label">Posts</span>
                 </div>
-                <div class="og-svg-status-item">
-                  <span class="og-svg-status-label">Permalinks:</span>
-                  <span class="og-svg-status-value <?php echo get_option('permalink_structure') ? 'og-svg-status-ok' : 'og-svg-status-warning'; ?>">
-                    <?php echo get_option('permalink_structure') ? 'Enabled' : 'Plain URLs'; ?>
-                  </span>
-                </div>
-                <div class="og-svg-status-item">
-                  <span class="og-svg-status-label">Test URL:</span>
-                  <span class="og-svg-status-value">
-                    <a href="<?php echo get_site_url() . '/og-svg/home/'; ?>" target="_blank" class="og-svg-test-link">
-                      <?php echo parse_url(get_site_url(), PHP_URL_HOST) . '/og-svg/home/'; ?>
-                    </a>
-                  </span>
+                <div class="og-svg-stat">
+                  <span class="og-svg-stat-number"><?php echo count($enabled_types); ?></span>
+                  <span class="og-svg-stat-label">Post Types</span>
                 </div>
               </div>
-            </div>
 
-            <div class="og-svg-sidebar-card">
-              <h3><span class="dashicons dashicons-lightbulb"></span> How It Works</h3>
-              <div class="og-svg-help-content">
-                <div class="og-svg-help-item">
-                  <span class="dashicons dashicons-yes-alt"></span>
-                  <div>
-                    <strong>Automatic Integration</strong>
-                    <p>The plugin automatically adds OpenGraph meta tags to your pages.</p>
-                  </div>
+              <div class="og-svg-status-checks">
+                <div class="og-svg-status-item">
+                  <span>Upload Directory</span>
+                  <span class="og-svg-status-badge <?php echo is_writable(wp_upload_dir()['basedir']) ? 'og-svg-status-ok' : 'og-svg-status-error'; ?>">
+                    <?php echo is_writable(wp_upload_dir()['basedir']) ? 'OK' : 'Error'; ?>
+                  </span>
                 </div>
-                <div class="og-svg-help-item">
-                  <span class="dashicons dashicons-update"></span>
-                  <div>
-                    <strong>Dynamic Content</strong>
-                    <p>Each page gets a unique image with its title and your branding.</p>
-                  </div>
-                </div>
-                <div class="og-svg-help-item">
-                  <span class="dashicons dashicons-performance"></span>
-                  <div>
-                    <strong>Optimized Performance</strong>
-                    <p>SVG images are lightweight and cached for fast loading.</p>
-                  </div>
+                <div class="og-svg-status-item">
+                  <span>Permalinks</span>
+                  <span class="og-svg-status-badge <?php echo get_option('permalink_structure') ? 'og-svg-status-ok' : 'og-svg-status-warning'; ?>">
+                    <?php echo get_option('permalink_structure') ? 'OK' : 'Plain'; ?>
+                  </span>
                 </div>
               </div>
             </div>
